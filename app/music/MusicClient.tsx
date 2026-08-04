@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, SkipBack, SkipForward, Repeat, Shuffle, RefreshCcw, ListMusic, Mic2, Disc3, Volume2, VolumeX, Search, X, MessageSquare } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Repeat, Shuffle, RefreshCcw, Disc3, Volume2, VolumeX, Search, X } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import PageTransition from '../../components/PageTransition';
 import { useMusic } from '../../components/MusicProvider';
@@ -11,7 +11,7 @@ export default function MusicClient() {
   const {
     playlist, currentSong, isPlaying, progress, currentTime, duration, currentLyric,
     isLoading, togglePlay, nextSong, prevSong, handleSeek,
-    playSong, selectSong,
+    playSong,
     playMode, togglePlayMode,
     volume, setVolume, isMuted, toggleMute
   } = useMusic();
@@ -101,8 +101,7 @@ export default function MusicClient() {
   };
 
   const handlePlaySong = (index: number) => {
-    if (typeof playSong === 'function') playSong(index);
-    else if (typeof selectSong === 'function') selectSong(index);
+    playSong(index);
   };
 
   const filteredPlaylist = useMemo(() => {
@@ -114,13 +113,26 @@ export default function MusicClient() {
     );
   }, [playlist, searchQuery]);
 
-  if (isLoading || !currentSong) {
+  if (isLoading) {
     return (
       <div className="min-h-screen relative pb-32 flex flex-col">
         <Navbar />
         <div className="flex-1 flex flex-col items-center justify-center animate-pulse gap-4">
           <Disc3 size={48} className="text-indigo-500 animate-spin" />
           <span className="font-black text-slate-500 tracking-widest text-sm">唤醒音频引擎中...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentSong || playlist.length === 0) {
+    return (
+      <div className="min-h-screen relative pb-32 flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center px-6">
+          <Disc3 size={48} className="text-indigo-500/60 animate-spin" style={{ animationDuration: '6s' }} />
+          <span className="font-black text-slate-600 dark:text-slate-300 tracking-widest text-base">正在为你寻找绝世好歌</span>
+          <span className="text-xs text-slate-400 font-medium tracking-wider">好歌正在路上，稍后刷新看看</span>
         </div>
       </div>
     );
@@ -265,15 +277,6 @@ export default function MusicClient() {
             </div>
           </div>
 
-          {/* ====== 留言板 ====== */}
-          <div className="mt-8 md:mt-12 mb-20 bg-white/60 dark:bg-slate-800/50 backdrop-blur-xl rounded-[32px] md:rounded-[40px] shadow-2xl border border-white/40 dark:border-white/10 overflow-hidden transition-colors duration-700 relative">
-             <div className="px-5 sm:px-8 md:px-16 py-8 md:py-12 relative">
-                <div className="flex items-center gap-3 mb-6 md:mb-8 border-b border-slate-300/50 dark:border-slate-700 pb-4 md:pb-6">
-                   <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-indigo-500/10 flex items-center justify-center"><MessageSquare className="text-indigo-500 w-5 h-5 md:w-6 md:h-6" /></div>
-                   <div><h3 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight">乐迷留言板</h3><p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium">听着这首歌，你想到了什么？</p></div>
-                </div>
-             </div>
-          </div>
         </div>
       </PageTransition>
 

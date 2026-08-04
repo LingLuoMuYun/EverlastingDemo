@@ -15,7 +15,12 @@ export const siteConfig = {
   defaultPostCover: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=1000&auto=format&fit=crop", // 文章封面占位
   photoWallImage: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=1000&auto=format&fit=crop", // 照片墙预览占位
 
-  cloudMusicIds: [] as string[],     // 网易云歌曲纯数字 ID（可后续填写）
+  cloudMusicIds: [
+    "1441758494", // Copy/BT07 - 晚风
+    "1350160463", // 泠鸢yousa - 勾指起誓
+    "2709782550", // 洛天依Official/ChiliChill乐团 - 下等马
+    "2727215107", // 花水r/洛天依 - 南京夜无电波讯号
+  ] as string[], // 网易云歌曲纯数字 ID
   social: {
     github: "https://github.com/LingLuoMuYun",
     email: "muyunliqiu@gmail.com",

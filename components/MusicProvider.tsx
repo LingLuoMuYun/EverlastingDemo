@@ -3,6 +3,31 @@
 import { createContext, useContext, useState, useRef, useEffect, ReactNode } from 'react';
 import { siteConfig } from '../siteConfig';
 
+// 【状态持久化】音量 / 静音 / 播放模式记忆到 localStorage
+const STORAGE_KEYS = {
+  volume: 'everlasting-music-volume',
+  muted: 'everlasting-music-muted',
+  playMode: 'everlasting-music-playmode',
+} as const;
+
+function readStored(key: string): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStored(key: string, value: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    /* 隐私模式等场景下写入失败不影响播放 */
+  }
+}
+
 // 【增强版 LRC 歌词解析】
 function parseLrc(lrcText: string) {
   if (!lrcText || lrcText.length > 30000) return [];
@@ -73,10 +98,16 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const [currentLyric, setCurrentLyric] = useState("正在连接高可用神经云端...");
   const [isLoading, setIsLoading] = useState(true);
 
-  // 🌟 2. 新增音量和播放模式状态
-  const [volume, setVolumeState] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
-  const [playMode, setPlayMode] = useState<PlayMode>('loop');
+  // 🌟 2. 新增音量和播放模式状态（从 localStorage 恢复）
+  const [volume, setVolumeState] = useState<number>(() => {
+    const stored = Number(readStored(STORAGE_KEYS.volume));
+    return Number.isFinite(stored) ? Math.min(1, Math.max(0, stored)) : 1;
+  });
+  const [isMuted, setIsMuted] = useState<boolean>(() => readStored(STORAGE_KEYS.muted) === '1');
+  const [playMode, setPlayMode] = useState<PlayMode>(() => {
+    const stored = readStored(STORAGE_KEYS.playMode);
+    return stored === 'single' || stored === 'random' ? stored : 'loop';
+  });
 
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -101,7 +132,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
         if (isMounted) {
           if (mergedPlaylist.length > 0) setPlaylist(mergedPlaylist);
-          else setCurrentLyric("云端链路受阻");
+          else setCurrentLyric("正在为你寻找绝世好歌");
           setIsLoading(false);
         }
       } catch (error) {
@@ -158,6 +189,19 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       audioRef.current.volume = isMuted ? 0 : volume;
     }
   }, [volume, isMuted]);
+
+  // 🌟 状态持久化：音量 / 静音 / 播放模式
+  useEffect(() => {
+    writeStored(STORAGE_KEYS.volume, String(volume));
+  }, [volume]);
+
+  useEffect(() => {
+    writeStored(STORAGE_KEYS.muted, isMuted ? '1' : '0');
+  }, [isMuted]);
+
+  useEffect(() => {
+    writeStored(STORAGE_KEYS.playMode, playMode);
+  }, [playMode]);
 
   const togglePlay = () => {
     if (audioRef.current) {
