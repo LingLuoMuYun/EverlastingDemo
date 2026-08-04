@@ -22,6 +22,6 @@ updated: '2026-08-05 03:14'
 唉，会赢的会赢的
 
 <br>
-![alt](https://c-ssl.dtstatic.com/uploads/blog/202308/01/y9SBMEm1TbYyqvm.thumb.1000_0.png)
+![示例图片](https://c-ssl.dtstatic.com/uploads/blog/202308/01/y9SBMEm1TbYyqvm.thumb.1000_0.png)
 
 **2026/8/5**
