@@ -5,10 +5,12 @@ import TimelineNode from './TimelineNode';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Sparkles, LayoutGrid, ListTree, Calendar, Hash, ArrowUp } from 'lucide-react';
 import Link from 'next/link';
+import { KIND_LABELS } from '../lib/types';
 
 export default function TimelineClient({ posts: initialPosts, tags }: { posts: any[], tags: { name: string, count: number }[] }) {
   const [posts, setPosts] = useState(initialPosts);
   const [selectedTag, setSelectedTag] = useState<string>('All');
+  const [selectedKind, setSelectedKind] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -48,16 +50,19 @@ export default function TimelineClient({ posts: initialPosts, tags }: { posts: a
     if (!searchQuery.trim()) return [];
     const query = searchQuery.toLowerCase();
     return posts.filter(post =>
-      post.title.toLowerCase().includes(query) ||
-      (post.description && post.description.toLowerCase().includes(query))
+      (selectedKind === 'All' || post.kind === selectedKind) &&
+      (post.title.toLowerCase().includes(query) ||
+      (post.description && post.description.toLowerCase().includes(query)))
     );
-  }, [posts, searchQuery]);
+  }, [posts, searchQuery, selectedKind]);
 
   const timelinePosts = useMemo(() => {
     return posts.filter(post => {
-      return selectedTag === 'All' || post.tags?.includes(selectedTag);
+      const matchKind = selectedKind === 'All' || post.kind === selectedKind;
+      const matchTag = selectedTag === 'All' || post.tags?.includes(selectedTag);
+      return matchKind && matchTag;
     });
-  }, [posts, selectedTag]);
+  }, [posts, selectedTag, selectedKind]);
 
   const handleGridScroll = () => {
     if (gridScrollRef.current) {
@@ -81,8 +86,24 @@ export default function TimelineClient({ posts: initialPosts, tags }: { posts: a
       <div className="text-center mb-12 relative z-20">
         <h1 className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter mb-4">归档与探索</h1>
         <p className="text-slate-500 dark:text-slate-400 font-medium flex items-center justify-center gap-2 italic">
-          <Sparkles size={16} className="text-indigo-500" /> 总计 {posts.length} 篇研究记录
+          <Sparkles size={16} className="text-indigo-500" /> 总计 {posts.length} 条记录
         </p>
+      </div>
+
+      <div className="flex flex-wrap justify-center gap-2 mb-8 relative z-20">
+        {['All', 'article', 'talk', 'moment'].map((kind) => (
+          <button
+            key={kind}
+            onClick={() => setSelectedKind(kind)}
+            className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl text-[10px] md:text-xs font-black transition-all duration-300 border ${
+              selectedKind === kind
+                ? 'bg-indigo-500 text-white border-indigo-500 shadow-md scale-105'
+                : 'bg-white/30 dark:bg-slate-800/30 text-slate-600 dark:text-slate-400 border-white/20 dark:border-white/5 hover:bg-white/60 dark:hover:bg-slate-700/60'
+            }`}
+          >
+            {kind === 'All' ? '全部' : KIND_LABELS[kind as 'article' | 'talk' | 'moment']}
+          </button>
+        ))}
       </div>
 
       <div className="flex flex-col items-center gap-8 mb-16 relative z-[99]">
@@ -114,7 +135,7 @@ export default function TimelineClient({ posts: initialPosts, tags }: { posts: a
                   <div className="flex flex-col py-2">
                     {searchResults.map((post) => (
                       <Link
-                        href={`/posts/${post.slug}`}
+  href={`/notes/${post.slug}`}
                         key={post.slug}
                         onClick={() => setIsDropdownOpen(false)}
                         className="px-6 py-4 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors group border-b border-slate-100/50 dark:border-slate-800/50 last:border-0 flex flex-col gap-1.5"
@@ -200,7 +221,7 @@ export default function TimelineClient({ posts: initialPosts, tags }: { posts: a
                   <motion.div key={post.slug} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3, delay: idx * 0.05 }}>
                     <div className="bg-white/60 dark:bg-slate-800/70 backdrop-blur-xl border border-white/50 dark:border-slate-700/50 rounded-2xl md:rounded-3xl overflow-hidden shadow-lg flex flex-col h-full group relative hover:-translate-y-1 transition-transform duration-300">
 
-                      <Link href={`/posts/${post.slug}`} className="block flex-1 flex flex-col cursor-pointer">
+<Link href={`/notes/${post.slug}`} className="block flex-1 flex flex-col cursor-pointer">
                         {/* 🌟 图片高度自适应：手机变矮，电脑变高 */}
                         <div className="relative h-28 sm:h-36 md:h-40 overflow-hidden">
                           <img src={post.cover} alt={post.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />

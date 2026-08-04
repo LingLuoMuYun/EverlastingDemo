@@ -9,3 +9,12 @@ export function getCached<T>(key: string, fetcher: () => T): T {
   cache.set(key, { data, timestamp: Date.now() });
   return data;
 }
+
+/** 编辑器写入后必须调用，避免"保存了前台看不到" */
+export function clearCache(key?: string) {
+  if (key) {
+    cache.delete(key);
+  } else {
+    cache.clear();
+  }
+}

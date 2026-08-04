@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
+import { KIND_LABELS } from '../lib/types';
 
 interface Post {
   slug: string;
@@ -118,7 +119,7 @@ export default function SearchBar({ posts = [] }: { posts: Post[] }) {
               <div className="flex flex-col py-3">
                 {searchResults.map((post) => (
                   <Link
-                    href={`/posts/${post.slug}`}
+                    href={`/notes/${post.slug}`}
                     key={post.slug}
                     onClick={() => setIsOpen(false)}
                     className="px-6 py-5 hover:bg-indigo-50/80 dark:hover:bg-indigo-500/10 transition-colors group border-b border-slate-100/50 dark:border-slate-800/50 last:border-0 flex flex-col gap-2"
@@ -130,6 +131,11 @@ export default function SearchBar({ posts = [] }: { posts: Post[] }) {
                       {post.date && (
                         <span className="text-[10px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-2 py-1 rounded-md shrink-0 mt-1">
                           {post.date.split(' ')[0]}
+                        </span>
+                      )}
+                      {post.kind && (
+                        <span className="text-[10px] font-black px-2 py-1 rounded-md shrink-0 mt-1 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                          {KIND_LABELS[post.kind as 'article' | 'talk' | 'moment']}
                         </span>
                       )}
                     </div>

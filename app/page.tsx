@@ -1,21 +1,21 @@
-import fs from 'fs';
-import path from 'path';
-import matter from 'gray-matter';
 import Link from 'next/link';
 
 import Navbar from '../components/Navbar';
 import PageTransition from '../components/PageTransition';
 import SearchBar from '../components/SearchBar';
 import { siteConfig } from '../siteConfig';
-import { normalizeDate } from '../lib/dates';
 import ThemeToggleBlock from '../components/ThemeToggleBlock';
 import ProfileCard from '../components/ProfileCard';
 import SiteDashboard from '../components/SiteDashboard';
 import { albums } from '../data/albums';
 import { ToastProvider } from '../components/ToastProvider';
+import CloudPlayer from '../components/CloudPlayer';
+import LyricBar from '../components/LyricBar';
+import WeatherWidget from '../components/WeatherWidget';
 
-import LatestPostsCarousel from '../components/LatestPostsCarousel';
-import LatestChatterCarousel from '../components/LatestChatterCarousel';
+import LatestNotesCarousel from '../components/LatestNotesCarousel';
+import { getAllNotesMeta } from '../lib/notes';
+import { KIND_LABELS } from '../lib/types';
 
 function formatUpdateTime(dateString: string) {
   if (!dateString || dateString === '1970-01-01') return '刚刚更新';
@@ -33,56 +33,17 @@ function formatUpdateTime(dateString: string) {
 }
 
 export default function Home() {
-  const postsDirectory = path.join(process.cwd(), 'posts');
-  let allPosts: any[] = [];
+  // 🌟 内容整合：统一从 notes/ 读取（文章/杂谈/说说），draft 已在 lib/notes.ts 过滤
+  let allNotes: any[] = [];
   try {
-    if (fs.existsSync(postsDirectory)) {
-      const fileNames = fs.readdirSync(postsDirectory).filter(f => f.endsWith('.md'));
-      allPosts = fileNames.map(fileName => {
-        const fullPath = path.join(postsDirectory, fileName);
-        const { data, content } = matter(fs.readFileSync(fullPath, 'utf8'));
-        const rawDate = normalizeDate(data.date) || '1970-01-01';
-        return {
-          slug: fileName.replace(/\.md$/, ''),
-          ...data,
-          title: data.title || '',
-          description: data.description || '',
-          content: content || '',
-          date: rawDate,
-          formattedDate: formatUpdateTime(rawDate)
-        };
-      }).sort((a, b) => {
-        const dateA = new Date(a.date).getTime();
-        const dateB = new Date(b.date).getTime();
-        if (dateB !== dateA) return dateB - dateA;
-        return b.slug.localeCompare(a.slug);
-      });
-    }
+    allNotes = getAllNotesMeta().map(note => ({
+      ...note,
+      title: note.title || '碎片记录',
+      description: note.description || note.excerpt || '',
+      formattedDate: formatUpdateTime(note.date)
+    }));
   } catch (e) {}
-  const top5Posts = allPosts.length > 0 ? allPosts.slice(0, 5) : [{ slug: 'none', title: '暂无文章', description: '快去写第一篇吧！', cover: siteConfig.defaultPostCover, date: '', formattedDate: '' }];
-
-  const chattersDirectory = path.join(process.cwd(), 'chatters');
-  let allChatters: any[] = [];
-  try {
-    if (fs.existsSync(chattersDirectory)) {
-      const chatterFiles = fs.readdirSync(chattersDirectory).filter(f => f.endsWith('.md'));
-      allChatters = chatterFiles.map(fileName => {
-        const fullPath = path.join(chattersDirectory, fileName);
-        const { data, content } = matter(fs.readFileSync(fullPath, 'utf8'));
-        const rawDate = normalizeDate(data.date) || '1970-01-01';
-        const cover = data.cover || 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=1000&auto=format&fit=crop';
-        return { slug: fileName.replace(/\.md$/, ''), title: data.title || '碎片记录', description: data.description || content.substring(0, 60), cover: cover, date: rawDate, formattedDate: formatUpdateTime(rawDate) };
-      }).sort((a, b) => {
-        const dateA = new Date(a.date).getTime();
-        const dateB = new Date(b.date).getTime();
-        if (dateB !== dateA) return dateB - dateA;
-        return b.slug.localeCompare(a.slug);
-      });
-    }
-  } catch (e) {}
-  const top5Chatters = allChatters.length > 0 ? allChatters.slice(0, 5) : [{ slug: 'none', title: '暂无记录', description: '记录一段思绪...', cover: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=1000&auto=format&fit=crop', date: '', formattedDate: '' }];
-
-  const chatterCount = allChatters.length;
+  const top5Notes = allNotes.length > 0 ? allNotes.slice(0, 5) : [{ slug: 'none', kind: 'article', title: '暂无内容', description: '快去写第一篇吧！', cover: siteConfig.defaultPostCover, date: '', formattedDate: '' }];
   const realPhotoCount = albums.reduce((total, album) => total + album.photos.length, 0);
   const latestAlbum = albums.length > 0 ? albums[0] : { id: '', title: '照片墙', description: '查看摄影', cover: siteConfig.photoWallImage, date: '' };
 
@@ -93,24 +54,29 @@ export default function Home() {
         <PageTransition>
           {/* 🌟 调整整体容器的内边距，适应手机端更小的屏幕 */}
           <div className="w-full max-w-6xl mx-auto mt-24 sm:mt-28 px-4 sm:px-6 lg:px-10 relative z-10">
-            <SearchBar posts={allPosts} />
+            <SearchBar posts={allNotes} />
 
             <main className="flex flex-col gap-6 w-full mt-6">
 
-              {/* 第一行：个人信息（音乐卡片将在阶段 4 加入） */}
+              {/* 第一行：个人信息 + 音乐卡片 */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full">
-                {/* 手机上占满1列，电脑上占7列 */}
-                <div className="col-span-1 lg:col-span-12 flex flex-col">
-                    <ProfileCard postCount={allPosts.length} chatterCount={chatterCount} photoCount={realPhotoCount}/>
+                <div className="col-span-1 lg:col-span-7 flex flex-col">
+                    <ProfileCard noteCount={allNotes.length} photoCount={realPhotoCount}/>
+                </div>
+                <div className="col-span-1 lg:col-span-5 flex flex-col">
+                    <CloudPlayer/>
                 </div>
               </div>
+
+              {/* 歌词栏 */}
+              <div className="w-full mt-[-10px]"><LyricBar/></div>
 
               {/* 第二行：文章轮播 + 照片墙 + 说说 + 主题切换 */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full">
 
                 {/* 左侧：文章轮播 (电脑端占4列，手机端排最上面) */}
                 <div className="col-span-1 lg:col-span-4 flex flex-col min-h-[300px]">
-                  <LatestPostsCarousel posts={top5Posts} />
+                  <LatestNotesCarousel notes={top5Notes} />
                 </div>
 
                 {/* 右侧：组合面板 (电脑端占8列) */}
@@ -126,14 +92,42 @@ export default function Home() {
                     </div>
                   </Link>
 
-                  {/* 底层网格：说说轮播 + 主题切换器 */}
+                  {/* 底层网格：最新动态 + 主题切换器 */}
                   {/* 手机上单列，平板上分3列比例分布 */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full flex-1">
                     <div className="sm:col-span-2 flex flex-col min-h-[200px]">
-                      <LatestChatterCarousel chatters={top5Chatters} />
+                      <div className="rounded-3xl bg-white/40 dark:bg-slate-800/40 backdrop-blur-2xl border border-white/50 dark:border-white/5 shadow-md md:shadow-xl overflow-hidden flex-1">
+                        <div className="p-4 md:p-6 border-b border-slate-200/40 dark:border-slate-700/40 flex items-center justify-between">
+                          <h3 className="text-sm md:text-base font-black text-slate-800 dark:text-white tracking-wider">最新动态</h3>
+                          <Link href="/notes" className="text-[10px] md:text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">查看全部 →</Link>
+                        </div>
+                        <div className="p-3 md:p-5 flex flex-col">
+                          {top5Notes.map((n, i) => (
+                            <Link
+                              key={n.slug}
+                              href={n.slug === 'none' ? '/notes' : `/notes/${n.slug}`}
+                              className="flex items-center gap-3 px-2 py-2.5 md:py-3 rounded-xl hover:bg-indigo-500/5 dark:hover:bg-indigo-400/5 transition-colors group/list"
+                            >
+                              <span className="w-5 h-5 md:w-6 md:h-6 shrink-0 rounded-lg bg-indigo-500/10 dark:bg-indigo-400/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-[9px] md:text-[10px] font-black">
+                                {i + 1}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-xs md:text-sm font-bold text-slate-700 dark:text-slate-200 truncate group-hover/list:text-indigo-600 dark:group-hover/list:text-indigo-400 transition-colors">
+                                  {n.title || '碎片记录'}
+                                </div>
+                                <div className="text-[9px] md:text-[10px] text-slate-400 font-bold mt-0.5">{n.formattedDate}</div>
+                              </div>
+                              <span className="text-[9px] md:text-[10px] font-black px-1.5 md:px-2 py-0.5 rounded-md border shrink-0 text-indigo-600 dark:text-indigo-400 bg-indigo-500/5 dark:bg-indigo-400/10 border-indigo-500/10">
+                                {KIND_LABELS[n.kind as 'article' | 'talk' | 'moment'] || '笔记'}
+                              </span>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                    <div className="sm:col-span-1 flex flex-col min-h-[120px]">
-                      <ThemeToggleBlock />
+                    <div className="sm:col-span-1 flex flex-col gap-6">
+                      <div className="min-h-[120px] flex-1"><ThemeToggleBlock /></div>
+                      <div className="min-h-[120px]"><WeatherWidget /></div>
                     </div>
                   </div>
 

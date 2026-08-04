@@ -26,13 +26,6 @@ export const siteConfig = {
   chatterDescription: "碎片记录",
   danmakuList: [] as string[],       // 背景弹幕文案
 
-  gitalkConfig: {
-    clientID: "",
-    clientSecret: "",                // 建议留空走环境变量
-    repo: "",
-    owner: "",
-    admin: [""],
-  },
   buildDate: "2026-08-04",
   footerBadges: [
     {

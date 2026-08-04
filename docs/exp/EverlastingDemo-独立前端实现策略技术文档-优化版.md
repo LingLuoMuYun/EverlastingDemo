@@ -1,14 +1,16 @@
-# EverlastingDemo 独立前端实现策略技术文档（优化版 v2.1）
+# EverlastingDemo 独立前端实现策略技术文档（优化版 v2.2）
 
 > **目标**：完全去掉 Python CMS 后端和管理端，仅保留参考项目 XHBlogs 的前端部分，以最小成本搭建本项目 **EverlastingDemo**（功能完整、UI 高还原的个人博客）。
 >
-> **版本**：v2.1（优化版 · EverlastingDemo） | **基于**：XinghuisamaBlogs/XHBlogs 源码（已观察） | **复核时间**：2026-08-04
+> **版本**：v2.2（优化版 · EverlastingDemo） | **基于**：XinghuisamaBlogs/XHBlogs 源码（已观察） | **复核时间**：2026-08-04
 >
 > **优化依据**：`XHBlogs-项目分析指南.md`（项目结构、技术栈、概念地图）+ 原《XHBlogs-审核报告与优化实现计划》（四轮审核发现，已并入 EverlastingDemo 审核优化版 v3.1）
 >
 > **证据标签**：`[已观察]`=直接读取源码确认；`[推断]`=由结构/调用关系得出；`[待确认]`=需要环境验证。
 >
 > **范围变更（2026-08-04）**：AI 猫猫功能（CyberCat / `app/api/chat` / Gemini / `GEMINI_API_KEY`）已按需求**完全移除**，本版实施清单、功能矩阵、依赖与环境变量均不再包含该功能；文中保留的原项目分析仅作参考。
+>
+> **范围变更（2026-08-05，v2.2）**：新增《EverlastingDemo-内容整合企划书-杂谈统一模块.md》，决定将「说说 /moments」「杂谈 /chatter」「文章 /posts」整合为统一「杂谈」模块（`notes/` + kind + 本地编辑器）。本文档 §2.1 路由清单、§3.2 内容文件、§9.4 内容更新工作流、§10 实施路线已同步更新。
 >
 > **命名约定**：**EverlastingDemo** = 本项目（GitHub: `LingLuoMuYun/EverlastingDemo`）；**XHBlogs** = 参考项目前端目录（`XinghuisamaBlogs/XHBlogs`），仅作源码参考。
 
@@ -23,6 +25,12 @@
 5. 新增「技能-实施步骤映射表」与「功能矩阵」，打通技术分析与实施路线。
 6. 按需求移除 AI 猫猫功能（CyberCat / `app/api/chat` / Gemini），本版不再包含该功能的实施内容。
 7. 项目品牌化为 **EverlastingDemo**，与参考项目 XHBlogs 明确区分。
+
+### 更新说明（v2.1 → v2.2，2026-08-05）
+
+8. **内容整合企划**：新增企划书（见 `docs/exp/EverlastingDemo-内容整合企划书-杂谈统一模块.md`），内容模型由 posts/chatters/moments 三目录改为 `notes/` 单目录 + `kind` 字段，并配套本地编辑器（`/editor` + `/api/notes`）。
+9. **路由体系更新**：§2.1 增加 `/notes`、`/notes/[slug]`、`/editor`、`/api/notes`；旧路由改为 301 重定向。
+10. **写作工作流更新**：§9.4 增加"md 直改"与"本地编辑器"双路径。
 
 ---
 
@@ -149,6 +157,10 @@ public/                 ← 静态资源（spaceship.bin、CNAME）
 | `/chatter/[slug]` | `app/chatter/[slug]/page.tsx` | SSR + `generateStaticParams` | `chatters/{slug}.md` |
 | `/about` | `app/about/page.tsx` | SSR（动态） | `app/about/about.md` + 三类内容活动时间线 |
 | `/moments` | `app/moments/page.tsx` | SSR（动态） | `posts/moments/*.md` + `moments/*.md`（双目录去重） |
+| `/notes`（整合后新增） | `app/notes/page.tsx` | SSR（动态） | `notes/*.md`（kind 筛选） |
+| `/notes/[slug]`（整合后新增） | `app/notes/[slug]/page.tsx` | SSR + `generateStaticParams` | `notes/{slug}.md` |
+| `/editor`、`/editor/[slug]`（整合后新增） | `app/editor/*` + `EditorClient` | 客户端岛 | `/api/notes`（本地写文件） |
+| `/api/notes`（整合后新增） | `app/api/notes/route.ts` | Serverless（仅本地可写） | `notes/*.md` |
 | `/friends` | `app/friends/page.tsx` | SSR 外壳 + 客户端岛 | `data/friends.ts` |
 | `/music` | `app/music/page.tsx` | SSR 外壳 + 客户端岛 | `siteConfig.cloudMusicIds` → `/api/music` |
 | `/photowall` | `app/photowall/page.tsx` | 客户端岛（无 Navbar 外壳） | `data/albums.ts` |
@@ -161,6 +173,8 @@ public/                 ← 静态资源（spaceship.bin、CNAME）
 | `/api/test` | `app/api/test/route.ts` | Edge Runtime | 健康检查 |
 
 > ⚠️ `/tree` 不是"目录树浏览"，而是**灵境（创意工坊）**：`CreativeWorkshopClient` 内含 `AlchemyLab`（饱和渐近经验升级系统）与 `DijiangModel`（3D 模型展示），`OperatorRecreation` 已注释停用。[已观察]
+
+> **整合后（2026-08-05）**：`/posts/[slug]`、`/chatter`、`/chatter/[slug]`、`/moments` 改为 301 跳转到 `/notes/...`（详见企划书 §3.2）。
 
 ### 2.2 三种页面实现模式（已观察）
 
@@ -312,6 +326,31 @@ tags: [标签1, 标签2]        # 可选，用于归档/详情页标签
 mood: "开心"                # 仅杂谈使用（详情页 ✨心情 徽章）
 location: "北京"            # 仅说说使用
 images: ["url1", "url2"]    # 仅说说使用
+---
+```
+
+**内容整合后（2026-08-05，见企划书 §3.1）**：统一为 `notes/` 单目录 + `kind` 字段，旧三目录由迁移脚本并入：
+
+```text
+notes/
+├── 2026-08-04-hello-world.md   # kind: article
+├── 2026-08-04-fragment.md      # kind: talk
+└── 2026-08-04-status.md        # kind: moment
+```
+
+```yaml
+---
+kind: article          # 必填：article 文章 / talk 杂谈 / moment 说说
+title: "文章标题"
+date: 2026-08-04 22:30
+updated: 2026-08-05 10:00   # 新增：编辑器保存时自动更新
+description: "文章摘要"
+cover: "https://..."
+tags: [标签1, 标签2]
+mood: "开心"             # talk/moment 用
+location: "北京"         # moment 用
+images: ["url1", "url2"] # moment 用
+draft: false             # 新增：true 时前台不展示
 ---
 ```
 
@@ -732,17 +771,28 @@ npm run dev          # http://localhost:3000
 
 ### 9.4 内容更新工作流（去掉 CMS 后）
 
+**方式一：手改 Markdown 文件**（内容整合前为三目录，整合后统一 `notes/`）
+
 ```
 本地编辑
-  ├── 写文章：posts/xxx.md
-  ├── 写杂谈：chatters/xxx.md
-  ├── 写说说：moments/moment-<时间戳>.md
+  ├── 写文章：notes/xxx.md（kind: article）
+  ├── 写杂谈：notes/xxx.md（kind: talk）
+  ├── 写说说：notes/xxx.md（kind: moment）
   ├── 改配置：siteConfig.ts
   ├── 加友链/项目/相册：data/*.ts
   └── 改关于页：app/about/about.md
 git add . && git commit -m "..." && git push
 Vercel 自动构建部署（约 30s-2min）
 ```
+
+**方式二：本地编辑器**（2026-08-05 内容整合后新增）
+
+```text
+npm run dev → 打开 /editor → 选择或新建笔记 → 双栏编辑（Markdown 源码 + 实时预览）
+→ 保存（PUT /api/notes 写回 notes/xxx.md）→ git push 发布
+```
+
+> 编辑器仅本地 dev 可写；生产环境（Vercel）文件系统只读，发布仍走 git push。两条路径作用于同一批 `.md`，展示效果一致（详见企划书 §3.4-§3.5）。
 
 ---
 
@@ -784,6 +834,8 @@ Vercel 自动构建部署（约 30s-2min）
 ### 阶段三：内容迁移与优化
 
 迁移历史文章、配置友链/项目/相册、优化封面图（图床外链）、设置自定义域名（Vercel Domains + `public/CNAME`）。
+
+> **内容整合（2026-08-05 新增）**：按《内容整合企划书》将 `posts/ chatters/ moments/` 迁移为 `notes/` 统一目录（`scripts/migrate-notes.mjs`），启用 `/notes` 统一列表/详情与本地编辑器（`/editor` + `/api/notes`），旧路由 301 重定向。推荐顺序：先展示整合（阶段 0-1）→ 再编辑器（阶段 2）→ 最后迁移存量（阶段 3）。
 
 ### 阶段四：自定义增强
 

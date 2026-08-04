@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Noto_Serif_SC } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "../components/ThemeProvider";
+import { MusicProvider } from "../components/MusicProvider";
+import FloatingPlayer from "../components/FloatingPlayer";
 import { siteConfig } from "../siteConfig";
 import BackgroundSlider from "../components/BackgroundSlider";
 import SplashScreen from "../components/SplashScreen";
@@ -60,6 +62,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
 
           <SplashScreen />
 
+          <MusicProvider>
           <div id="app-mount-root" className="flex-1 flex flex-col transition-opacity duration-1000">
             <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden">
               {!siteConfig.useGradient && <BackgroundSlider />}
@@ -83,6 +86,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               {children}
             </div>
 
+            <div className="hidden md:block">
+              <FloatingPlayer />
+            </div>
+
             <div className="md:hidden block">
               <MobileBackButton />
             </div>
@@ -95,6 +102,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               100% { background-position: 0% 50%; } 
             }
           `}} />
+          </MusicProvider>
 
         </ThemeProvider>
       </body>

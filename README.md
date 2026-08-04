@@ -1,2 +1,127 @@
 # EverlastingDemo
-泠落的个人博客
+
+泠落的个人博客 —— 基于 **Next.js 16 + React 19 + Tailwind CSS v4** 的高颜值毛玻璃（Glassmorphism）风格站点。
+
+内容采用"文件即内容"模式：文章 / 杂谈 / 说说统一存放在 `notes/*.md`，无数据库；写作支持**手改 Markdown** 与**本地编辑器**双路径，修改后 `git push` 即自动部署（GitHub + Vercel）。
+
+## ✨ 功能特性
+
+- 🧭 **统一「杂谈」内容模块**：文章（`article`）/ 杂谈（`talk`）/ 说说（`moment`）三合一，`/notes` 列表按类型 Tab 筛选 + 搜索 + 标签过滤，详情页按类型渲染（文章 TOC、杂谈心情、说说定位/图片灯箱）
+- ✏️ **本地编辑器**：`/editor` 双栏写作（Markdown 源码 + 实时预览），元数据表单、草稿、自动保存、Ctrl+S、slug 自动生成、冲突检测
+- 🎨 毛玻璃设计系统 + 暗/亮主题 + 流动渐变背景
+- 🎵 网易云音乐播放器（云播放、歌词、黑胶动画）
+- ❄️ 和风天气挂件 + 天气特效
+- 📷 照片墙（相册 + 灯箱）、友链、项目展示、归档时间线、关于页
+- 🔍 全站搜索（覆盖全部笔记）
+- 🌐 旧路由 301 兼容（`/posts/*`、`/chatter*`、`/moments` → `/notes/*`）
+
+## 🛠 技术栈
+
+| 类别 | 技术 |
+|------|------|
+| 框架 | Next.js 16（App Router）+ React 19 + TypeScript 5 |
+| 样式 | Tailwind CSS v4 + @tailwindcss/typography |
+| 内容 | gray-matter + unified / remark / rehype（GFM、KaTeX、highlight.js） |
+| 动画 | Framer Motion |
+| 图标 | lucide-react |
+| 部署 | GitHub + Vercel（SSR / SSG） |
+
+## 🚀 快速开始
+
+```bash
+npm install
+npm run dev
+# 打开 http://localhost:3000
+```
+
+可选环境变量（复制 `.env.example` 为 `.env.local`）：
+
+| 变量 | 说明 |
+|------|------|
+| `QWEATHER_KEY` | 和风天气密钥（天气挂件，可选） |
+| `EDITOR_TOKEN` | 本地编辑器鉴权（可选；开启后请求需带 `Authorization: Bearer <token>`） |
+
+## ✍️ 写作：内容模型
+
+所有内容统一存放在 `notes/*.md`，文件名即 slug（仅小写字母/数字/中划线），类型由 frontmatter `kind` 区分：
+
+```markdown
+---
+kind: article          # article=文章 / talk=杂谈 / moment=说说
+title: "你好，世界"
+date: 2026-08-04 22:30
+updated: 2026-08-05 10:00  # 编辑器保存时自动更新
+description: "摘要（可选，缺省取正文前 100 字）"
+cover: https://...          # 封面（可选）
+tags: [博客, 开始]          # 可选
+mood: "开心"                # 杂谈/说说 可选
+location: "北京"            # 说说 可选
+images: ["https://..."]     # 说说 可选（图片九宫格/灯箱）
+draft: false                # true = 前台不可见（草稿）
+---
+
+正文 Markdown...
+```
+
+**两种写作方式（结果完全等价）**：
+
+1. **手改 Markdown**：直接编辑 `notes/` 下的 `.md` 文件；
+2. **本地编辑器**：`npm run dev` 后打开 `/editor`，新建/编辑/删除笔记，保存即写回 `notes/*.md`。
+
+发布流程：`git add . && git commit -m "更新笔记" && git push` → Vercel 自动构建部署。
+
+> ⚠️ 编辑器仅本地开发可用：Vercel 生产环境文件系统只读，线上 `/editor` 会显示只读提示。
+
+## 🗺 路由一览
+
+| 路由 | 说明 |
+|------|------|
+| `/` | 首页（个人名片、笔记轮播、最新动态、照片墙、音乐、天气） |
+| `/notes` | 「杂谈」统一列表（kind Tab + 搜索 + 标签） |
+| `/notes/[slug]` | 笔记详情（按 kind 条件渲染） |
+| `/editor` `/editor/new` `/editor/[slug]` | 本地编辑器（列表 / 新建 / 编辑） |
+| `/api/notes` `/api/notes/render` | 编辑器读写接口（生产只读） |
+| `/timeline` | 归档（年月 + 标签 + kind 筛选） |
+| `/photowall` `/music` `/friends` `/projects` `/about` | 照片墙 / 音乐 / 友链 / 项目 / 关于 |
+
+旧路由 `/posts/[slug]`、`/chatter`、`/chatter/[slug]`、`/moments` 已 301 跳转到新地址。
+
+## 📦 常用命令
+
+```bash
+npm run dev                 # 本地开发
+npm run build               # 生产构建
+npm run start               # 生产运行
+npm run lint                # 代码检查
+node scripts/validate-notes.mjs            # 校验 notes/ frontmatter
+node scripts/migrate-notes.mjs --dry-run   # 旧目录（posts/chatters/moments）迁移预演
+node scripts/migrate-notes.mjs             # 执行迁移（幂等）
+```
+
+## ☁️ 部署
+
+1. 推送到 GitHub 仓库 `LingLuoMuYun/EverlastingDemo`；
+2. Vercel → Import 仓库 → Framework 自动识别 Next.js；
+3. 配置环境变量（`QWEATHER_KEY` 可选）；
+4. Deploy；之后每次 `git push` 自动重新构建。
+
+渲染说明：`/notes/[slug]` 使用 `generateStaticParams` 构建期预渲染；新增笔记需重新构建（push 触发）后上线。
+
+## 📚 文档索引
+
+技术文档位于 `docs/exp/`：
+
+| 文档 | 说明 |
+|------|------|
+| [内容整合企划书](docs/exp/EverlastingDemo-内容整合企划书-杂谈统一模块.md) | 「杂谈」统一内容模块 + 本地编辑器的完整方案（含实施状态） |
+| [可复现高还原项目实现指南](docs/exp/EverlastingDemo-可复现高还原项目实现指南.md) | 从 0 到 1 搭建指南（0-6 阶段） |
+| [独立前端实现策略技术文档](docs/exp/EverlastingDemo-独立前端实现策略技术文档-优化版.md) | 技术蓝图（路由、内容模型、API、样式系统） |
+| [审核报告与优化实现计划](docs/exp/EverlastingDemo-审核报告与优化实现计划-优化版.md) | 多轮源码复核与优化计划 |
+| [XHBlogs 项目分析指南](docs/exp/XHBlogs-项目分析指南.md) | 参考项目 XHBlogs 的历史分析 |
+
+## 📝 版本记录
+
+| 版本 | 日期 | 说明 |
+|------|------|------|
+| init | 2026-08-04 | EverlastingDemo 初始化（Next.js 16 + React 19 + Tailwind v4） |
+| 0.2.0 | 2026-08-05 | 内容整合：统一「杂谈」模块（notes/ + kind）、本地编辑器、旧路由 301、音乐/天气组件 |

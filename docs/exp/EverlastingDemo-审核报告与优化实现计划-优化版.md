@@ -1,10 +1,10 @@
-# EverlastingDemo 独立前端 — 多轮审核报告与优化实现计划（优化版 v3.1）
+# EverlastingDemo 独立前端 — 多轮审核报告与优化实现计划（优化版 v3.2）
 
 > 审核对象：原《XHBlogs-独立前端实现策略技术文档》（v1.0，已由 EverlastingDemo 优化版取代）及其优化版 v2.1
 > 审核人视角：5 年以上前端工程经验
 > 审核方式：**逐文件对照 `XinghuisamaBlogs/XHBlogs` 源码复核**（已观察标签 = 直接读取源码确认）
 > 审核轮次：4 轮（完整性 → 准确性 → 实操性 → 结构性）+ 1 轮源码复核
-> 版本：v3.1（优化版 · EverlastingDemo） | 复核时间：2026-08-04
+> 版本：v3.2（优化版 · EverlastingDemo） | 复核时间：2026-08-04 | 内容整合补充：2026-08-05
 >
 > **范围说明（2026-08-04）**：AI 猫猫功能（CyberCat / `app/api/chat` / Gemini / `GEMINI_API_KEY`）已按需求**完全移除**，本版功能矩阵、四阶段计划、文件清单均不再包含该功能；第一/二轮中与 Chat API 相关的审核条目仅作历史记录。
 >
@@ -19,6 +19,7 @@
 3. 功能矩阵、四阶段计划、文件清单按源码复核结果重写，可直接作为整合实现指南的施工蓝本。
 4. 按需求将 AI 猫猫移出实施范围，功能矩阵、四阶段计划、文件清单同步更新。
 5. 项目品牌化为 **EverlastingDemo**，与参考项目 XHBlogs 明确区分。
+6. **新增内容整合企划（2026-08-05）**：决定将「说说 /moments」「杂谈 /chatter」「文章 /posts」整合为统一「杂谈」模块（`notes/` 单目录 + kind + 本地编辑器），详见新增「第六部分」与《EverlastingDemo-内容整合企划书-杂谈统一模块.md》。
 
 ---
 
@@ -116,6 +117,7 @@
 | N6 | **灵境页真实功能** | `tree/CreativeWorkshopClient.tsx`：AlchemyLab（`enableLevelSystem` 经验等级）+ DijiangModel（spaceship.bin 3D）；OperatorRecreation 注释停用 | v1.0"目录树浏览"描述错误 |
 | N7 | **`social.google` 字段命名误导** | ProfileCard 中 google 走 `SocialBtn` 普通链接；字段名为 google 语义不符 | 建议改名 `site` 或注释说明 |
 | N8 | **Chat API 双 Key 兜底** | `GEMINI_API_KEY || OPENAI_API_KEY` | 原部署文档按此说明；AI 猫猫删除后不再需要 |
+| N9 | **三类内容三套体系并存（2026-08-05）** | `posts/ chatters/ moments/` 三目录、三套读取/渲染、首页双轮播、导航「说说+杂谈」双入口 | 建议整合为统一「杂谈」模块（见企划书） |
 
 ---
 
@@ -312,7 +314,8 @@ export function getCached<T>(key: string, fetcher: () => T): T {
 | 👥 友链 | 🟢 可选 | friends/*, data/friends.ts | 无 | 删路由 + data |
 | 🚀 项目展示 | 🟢 可选 | projects/*, data/projects.ts | 无 | 删路由 + data |
 | 📅 时间线归档 | 🟢 可选 | timeline/*, TimelineClient, TimelineNode | framer-motion | 删路由 |
-| 💬 说说 | 🟢 可选 | moments/*, MomentList, MomentComments | 无 | 删路由 |
+| 💬 说说（整合后并入「杂谈」） | 🟢 可选 | moments/*, MomentList, MomentComments → notes/ kind=moment | 无 | 删路由 |
+| ✏️ 本地编辑器（2026-08-05 内容整合新增） | 🟡 推荐 | app/editor/*, app/api/notes, lib/notes.ts | gray-matter | 仅本地 dev 可写；生产只读 |
 | 🌲 灵境工坊 | 🟢 可选 | tree/*, AlchemyLab, DijiangModel | three, lucide-react | `enableLevelSystem:false` |
 | 🎆 粒子/樱花/萤火虫 | 🟢 可选 | BackgroundEffects, Sakura, Fireflies, WindyGrass | 无（纯 CSS） | 移除组件 |
 | 🎌 弹幕背景 | 🟢 可选 | DanmakuBackground | 无 | `danmakuList: []` |
@@ -439,5 +442,39 @@ rg -l "MusicProvider" app components
 
 ---
 
-> **文档版本**：v3.1（优化版 · EverlastingDemo） | **审核方式**：4 轮审核 + 源码复核 | **复核时间**：2026-08-04
-> **关联文档**：`EverlastingDemo-独立前端实现策略技术文档-优化版.md`（技术蓝图）、`EverlastingDemo-可复现高还原项目实现指南.md`（0-1 整合版）
+## 第六部分：内容整合企划摘要（2026-08-05 补充）
+
+> 完整方案见《EverlastingDemo-内容整合企划书-杂谈统一模块.md》。本节是供审核读者快速对齐的摘要。
+
+### 6.1 整合内容
+
+| 项目 | 整合前 | 整合后 |
+|------|--------|--------|
+| 内容目录 | `posts/`、`chatters/`、`moments/`（兼容 `posts/moments/`） | `notes/` 单目录 |
+| 内容类型 | 目录即类型 | frontmatter `kind: article / talk / moment` |
+| 列表页 | `/posts`（无）、`/chatter`、`/moments` | `/notes`（kind Tab + 搜索 + 标签） |
+| 详情页 | `/posts/[slug]`、`/chatter/[slug]`、无（说说） | `/notes/[slug]`（按 kind 条件渲染） |
+| 首页 | 双轮播 + 双计数 | 单轮播 LatestNotesCarousel + 合并计数 |
+| 导航 | 「说说」「杂谈」双入口 | 「杂谈」单入口（指向 /notes） |
+| 更新方式 | 仅手改 md | md 直改 + 本地编辑器（`/editor` + `/api/notes`）双路径 |
+
+### 6.2 新增/删除要点
+
+```text
+新增：app/notes/*、app/editor/*、app/api/notes、lib/notes.ts、
+      components/NoteBoard.tsx、EditorClient.tsx、LatestNotesCarousel.tsx、scripts/migrate-notes.mjs
+删除（迁移完成后）：app/moments/、app/chatter/、app/posts/[slug]/、LatestPostsCarousel.tsx、
+      LatestChatterCarousel.tsx、posts/、chatters/、moments/
+旧路由：/posts/[slug]、/chatter、/chatter/[slug]、/moments → 301 → /notes/...
+```
+
+### 6.3 关键约束
+
+- **文件即真相源**：编辑器保存 = 写回 `notes/*.md`，渲染端永远读磁盘。
+- **本地优先**：编辑器写接口仅本地 dev 可用；Vercel 生产环境文件系统只读，发布走 git push。
+- **迁移零丢失**：`scripts/migrate-notes.mjs` 冲突检测 + 后缀规则 + 迁移报告；旧链接 301 保留一个版本周期。
+
+---
+
+> **文档版本**：v3.2（优化版 · EverlastingDemo） | **审核方式**：4 轮审核 + 源码复核 | **复核时间**：2026-08-04 | **内容整合补充**：2026-08-05
+> **关联文档**：`EverlastingDemo-独立前端实现策略技术文档-优化版.md`（技术蓝图）、`EverlastingDemo-可复现高还原项目实现指南.md`（0-1 整合版）、`EverlastingDemo-内容整合企划书-杂谈统一模块.md`（内容整合方案）

@@ -13,3 +13,6 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# TypeScript 增量构建缓存
+*.tsbuildinfo

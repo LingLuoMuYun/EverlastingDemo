@@ -9,6 +9,8 @@
 > **版本**：v1.1（整合版 · EverlastingDemo） | **日期**：2026-08-04
 >
 > **范围说明（2026-08-04）**：AI 猫猫（CyberCat / `app/api/chat` / Gemini / `GEMINI_API_KEY`）已按需求**完全移除**，本指南所有搭建步骤、功能矩阵、依赖与环境变量清单均不再包含该功能；后续如需恢复可参考原项目代码。
+>
+> **内容整合修订（2026-08-05，v1.2）**：已决定将「说说 /moments」「杂谈 /chatter」「文章 /posts」整合为统一「杂谈」模块（`notes/` 单一目录 + kind 区分 + 本地编辑器），完整方案见《EverlastingDemo-内容整合企划书-杂谈统一模块.md》。本指南中与内容模型、路由、更新工作流相关的章节已同步标注"整合前/整合后"。
 
 ---
 
@@ -158,7 +160,7 @@ EverlastingDemo/                      ★ 项目根（GitHub: LingLuoMuYun/Everl
 │   └── BackgroundEffects / BackgroundSlider / DanmakuBackground / Sakura /
 │       Fireflies / GlobalSnow / WindyGrass / ClickEffect / WeatherEffect
 ├── data/                             - albums.ts / friends.ts / projects.ts
-├── posts/ chatters/ moments/         - Markdown 内容
+├── notes/                            - Markdown 内容（整合后统一目录；迁移前为 posts/ chatters/ moments/ 三目录）
 ├── public/                           - spaceship.bin（3D）、CNAME
 ├── .env.local                        - 本地环境变量（不提交）
 └── .gitignore
@@ -170,7 +172,7 @@ EverlastingDemo/                      ★ 项目根（GitHub: LingLuoMuYun/Everl
 graph LR
     A[用户浏览器] -->|SSR 页面| B[fs 读取 Markdown / data]
     A -->|客户端交互| C[API Routes]
-    B --> D[posts/*.md + data/*.ts + siteConfig.ts]
+    B --> D[notes/*.md + data/*.ts + siteConfig.ts]
     C --> E[网易云 / 和风天气 / GitHub OAuth]
     D --> F[GitHub 仓库]
     F --> G[Vercel 自动构建部署]
@@ -179,7 +181,7 @@ graph LR
 五个核心概念（贯穿全文）：
 
 1. **siteConfig 配置中心**：所有可配置项集中在 `siteConfig.ts`，前端页面与 API 路由共享同一份配置。
-2. **Markdown 文件即内容**：文章/杂谈/说说都是 `.md` 文件，`fs + gray-matter + unified` 服务端渲染。
+2. **Markdown 文件即内容**：文章/杂谈/说说都是 `.md` 文件，`fs + gray-matter + unified` 服务端渲染；内容整合后统一存放于 `notes/`，用 frontmatter `kind`（article/talk/moment）区分类型。
 3. **服务端取数、客户端交互**：RSC 读文件 → props 传给 `"use client"` 组件。
 4. **API 代理层**：密钥只出现在服务端环境变量，前端永远只调同源 `/api/*`。
 5. **毛玻璃设计系统**：统一的 `bg-white/40 + backdrop-blur + border-white/40 + rounded-3xl` 卡片公式 + 流动渐变背景 + 暗/亮双主题。
@@ -677,6 +679,28 @@ images: ["https://example.com/1.jpg"]
 
 > 说说目录兼容两种位置：`moments/` 或 `posts/moments/`（源码双目录扫描 + Map 去重）。[已观察]
 
+### 整合后：notes/ 统一内容（2026-08-05 起推荐，见企划书）
+
+```markdown
+---
+kind: article          # article=文章 / talk=杂谈 / moment=说说
+title: "你好，世界"
+date: 2026-08-04 22:30
+updated: 2026-08-05 10:00  # 编辑器保存时自动更新
+description: "这是我的第一篇文章"
+cover: https://example.com/cover.jpg
+tags: [博客, 开始]
+mood: "开心"           # talk/moment 用
+location: "北京"       # moment 用
+images: []             # moment 用
+draft: false           # true 时前台不展示
+---
+
+正文 Markdown...
+```
+
+> 整合后文章/杂谈/说说统一放 `notes/`，文件名即 slug，`kind` 区分类型；旧目录由迁移脚本 `scripts/migrate-notes.mjs` 迁入（详见企划书 §3.6）。
+
 ### 关于页 app/about/about.md
 
 ```markdown
@@ -1133,6 +1157,8 @@ export default async function Post({ params }: { params: Promise<{ slug: string 
 - 文本预清洗额外包含：清除零宽字符 `[\u200B-\u200D\uFEFF]`
 - 正文容器 `rounded-[40px]`
 
+> **整合后（2026-08-05）**：`/chatter/[slug]` 与 `/posts/[slug]` 合并为统一详情页 `/notes/[slug]`，按 `kind` 条件渲染（article→TOC、talk→心情徽章、moment→定位/图片/评论区），旧路由 301 跳转。详见企划书 §3.2。
+
 ## 3.7 关于页 app/about/page.tsx
 
 ```tsx
@@ -1146,7 +1172,8 @@ export default async function Post({ params }: { params: Promise<{ slug: string 
 
 | 页面 | 实现要点（已观察） |
 |------|--------------------|
-| 说说 `/moments` | `page.tsx` 双目录扫描（`posts/moments` + `moments`）→ Map 去重 → `MomentList`（瀑布流 + 图片九宫格 + MomentComments） |
+| 说说 `/moments` | `page.tsx` 双目录扫描（`posts/moments` + `moments`）→ Map 去重 → `MomentList`（瀑布流 + 图片九宫格 + MomentComments）；**整合后并入 `/notes` 的 kind=moment 筛选** |
+| 杂谈 `/chatter` | `ChatterBoard` 瀑布流 + 搜索 + 标签筛选 + 心情徽章；**整合后并入 `/notes` 的 kind=talk 筛选** |
 | 归档 `/timeline` | `page.tsx` 读全部 posts + 统计 tag 计数 → `TimelineClient`（标签筛选 + 年月归档 + TimelineNode 节点） |
 | 友链 `/friends` | `FriendsBoard`：卡片网格 + 复制友链申请格式（`siteConfig.friendLinkApplyFormat`）+ 评论区（Comments） |
 | 项目 `/projects` | `ProjectsBoard`：标题大字 + 搜索过滤（name/description/tags）+ 卡片网格 |
@@ -1403,9 +1430,14 @@ git push -u origin main
 ## 5.4 日常内容更新
 
 ```text
-写文章 → posts/xxx.md
-写杂谈 → chatters/xxx.md
-写说说 → moments/moment-<时间戳>.md（或 posts/moments/）
+方式一：手改 Markdown 文件（熟悉 md 的人推荐）
+  写文章 → notes/xxx.md（kind: article）
+  写杂谈 → notes/xxx.md（kind: talk）
+  写说说 → notes/xxx.md（kind: moment）
+方式二：本地编辑器（日常写作推荐）
+  npm run dev → 打开 /editor → 新建/编辑/保存（写回 notes/xxx.md）
+迁移前旧目录：posts/ chatters/ moments/ 仍兼容（详见企划书 §3.6）
+
 改配置 → siteConfig.ts
 改友链/项目/相册 → data/friends.ts / data/projects.ts / data/albums.ts
 改关于页 → app/about/about.md
@@ -1413,6 +1445,8 @@ git push -u origin main
 git add . && git commit -m "新文章" && git push
 → Vercel 自动构建部署（约 30s-2min）
 ```
+
+> 编辑器只写本地文件；生产环境（Vercel）文件系统只读，发布仍走 git push。两条路径作用于同一批 `.md`，展示效果完全一致。
 
 ---
 
@@ -1428,6 +1462,7 @@ git add . && git commit -m "新文章" && git push
 | 🌓 暗/亮切换 | 🔴 必需 | 2 | ThemeProvider, ThemeToggleBlock | 无 | - |
 | 🧭 导航栏 | 🔴 必需 | 2 | Navbar | framer-motion | - |
 | 📝 内容页面（杂谈/说说/时间线/友链/项目/照片墙） | 🟡 推荐 | 3 | 各路由页 + data/*.ts | 无 | 删路由 + data |
+| ✏️ 本地编辑器（内容整合后） | 🟡 推荐 | 4 | app/editor/*、app/api/notes、lib/notes.ts | gray-matter | 仅本地 dev 可写；生产只读 |
 | 🔍 搜索 | 🟡 推荐 | 4 | SearchBar | framer-motion | - |
 | 💬 评论 (Gitalk) | 🟡 推荐 | 4 | Comments, api/github | gitalk | 配 gitalkConfig + OAuth |
 | 🎵 音乐播放器 | 🟢 可选 | 4 | MusicProvider, FloatingPlayer, CloudPlayer, LyricBar, SidebarLyric, MusicClient, api/music | lucide-react | `cloudMusicIds: []` |
@@ -1505,6 +1540,7 @@ rg -l "MusicProvider|Comments|GlobalToolbox" app components   # 找出引用者
 | Gitalk 依赖 GitHub Issues | 若需国内访问可换 Waline/Giscus/Twikoo |
 | 网易云外链播放地址时效性 | 无版权/接口变动时音乐不可用，属第三方限制 |
 | 无自动化测试 | 可加 Vitest 单测覆盖 markdown 预清洗函数 |
+| 本地编辑器在生产环境（Vercel）无法写盘 | 编辑器仅本地 dev 可写；生产发布走 git push；未来可选 GitHub API 写仓（见企划书 §6） |
 
 ---
 
@@ -1533,7 +1569,9 @@ EverlastingDemo/
 │   └── api/（music/route.ts, weather/route.ts, github/route.ts, test/route.ts）
 ├── components/（38+ 个，见 1.3）
 ├── data/（albums.ts, friends.ts, projects.ts）
-├── posts/  chatters/  moments/  public/
+├── notes/（整合后统一内容目录；迁移前为 posts/ chatters/ moments/）
+├── app/notes/  app/editor/  app/api/notes/   ← 内容整合新增（见企划书）
+└── public/
 ```
 
 ## 附录 B：关键代码索引
@@ -1558,6 +1596,7 @@ EverlastingDemo/
 | v3.0 | 2026-08-04 | 审核报告优化版（新增第五轮源码复核，8 项新发现） |
 | 整合版 | 2026-08-04 | 本指南：0-1 搭建 + UI 高还原实现 + 部署 + 排查 + 优化清单 |
 | v1.1 | 2026-08-04 | 项目更名为 EverlastingDemo，与参考项目 XHBlogs 区分 |
+| v1.2 | 2026-08-05 | 新增《内容整合企划书》：说说/杂谈/文章整合为 notes/ 统一模块 + 本地编辑器；同步更新内容模型、路由、更新工作流、功能矩阵 |
 
 ---
 
@@ -1579,7 +1618,7 @@ EverlastingDemo/
 - [ ] 创建目录骨架（§2.4）
 - [ ] 写入 `globals.css` 与 `siteConfig.ts`（先填自己的基础信息）
 - [ ] 创建 `lib/types.ts`、`lib/markdown.ts`
-- [ ] 写第一篇 `posts/hello-world.md`
+- [ ] 写第一篇内容：`posts/hello-world.md`（整合后按企划书 §3.1 直接写 `notes/hello-world.md` + kind 字段）
 - [ ] 验收：`npm run dev` 启动，文章详情页能渲染 Markdown
 
 ### 阶段 2：页面骨架（2-3 小时）
