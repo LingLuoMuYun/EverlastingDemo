@@ -2,7 +2,7 @@
 kind: moment
 title: The first memo
 date: '2026-08-05 02:59'
-cover: 'C:\Users\16037\Pictures\存图库\Camera Roll\7.31save\Image_1719567911637.jpg'
+cover: 'https://c-ssl.dtstatic.com/uploads/blog/202308/01/y9SBMEm1TbYyqvm.thumb.1000_0.png'
 tags: []
 location: 杭州
 images:

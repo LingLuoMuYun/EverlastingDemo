@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Cloud, Sun, CloudRain, Snowflake, CloudLightning, Loader2, Wind } from 'lucide-react';
+import { Cloud, Sun, CloudRain, Snowflake, Loader2 } from 'lucide-react';
 
 export default function WeatherWidget() {
   const [weather, setWeather] = useState<{ city: string; temp: number; text: string; icon: string; isMock: boolean } | null>(null);
@@ -26,7 +26,7 @@ export default function WeatherWidget() {
         } else {
           throw new Error(data.message || "Data Error");
         }
-      } catch (err) {
+      } catch {
         // 报错时开启赛博模拟模式
         setWeather({ city: "郑州市", temp: 22, text: "气候模拟", icon: "101", isMock: true });
       } finally {

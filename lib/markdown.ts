@@ -50,7 +50,19 @@ export async function renderMarkdown(content: string): Promise<string> {
   return processed.toString();
 }
 
-export function getAllMarkdownFiles(dirName: string) {
+export interface MarkdownFile {
+  slug: string;
+  content: string;
+  excerpt: string;
+  date: string;
+  [key: string]: unknown;
+}
+
+export interface MarkdownPage extends Record<string, unknown> {
+  contentHtml: string;
+}
+
+export function getAllMarkdownFiles(dirName: string): MarkdownFile[] {
   const dir = path.join(process.cwd(), dirName);
   if (!fs.existsSync(dir)) return [];
   return fs
@@ -58,21 +70,22 @@ export function getAllMarkdownFiles(dirName: string) {
     .filter((f) => f.endsWith(".md"))
     .map((fileName) => {
       const { data, content } = matter(fs.readFileSync(path.join(dir, fileName), "utf8"));
+      const meta = data as Record<string, unknown>;
       return {
         slug: fileName.replace(/\.md$/, ""),
-        ...data,
+        ...meta,
         content,
-        excerpt: data.description || content.substring(0, 100),
-      };
+        excerpt: typeof meta.description === "string" ? meta.description : content.substring(0, 100),
+      } as MarkdownFile;
     })
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
-export async function getMarkdownPage(filePath: string) {
+export async function getMarkdownPage(filePath: string): Promise<MarkdownPage | null> {
   const fullPath = path.join(process.cwd(), filePath);
   if (!fs.existsSync(fullPath)) return null;
   const { data, content } = matter(fs.readFileSync(fullPath, "utf8"));
-  return { ...data, contentHtml: await renderMarkdown(content) };
+  return { ...(data as Record<string, unknown>), contentHtml: await renderMarkdown(content) };
 }
 
 export function extractToc(content: string): TocItem[] {

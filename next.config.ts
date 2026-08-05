@@ -5,8 +5,9 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true, // 全站原生 <img> + 外部图床，禁用 Next 图片优化
   },
+  // 类型错误已在构建期拦截（勿改回 true，否则会掩盖真实类型问题）
   typescript: {
-    ignoreBuildErrors: true, // 参考项目如此；生产环境建议改为 false
+    ignoreBuildErrors: false,
   },
   // 🌟 内容整合：旧路由 301 到统一 /notes（迁移期保留一个版本周期后删除）
   async redirects() {

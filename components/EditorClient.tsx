@@ -208,18 +208,6 @@ function EditorForm({ note, initialMtime, allSlugs }: { note: NoteLike | null; i
     };
   }, [content]);
 
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
-        e.preventDefault();
-        handleSave();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind, title, date, description, cover, tagsText, mood, location, imagesText, draft, slug, content]);
-
   const handleTitleChange = (v: string) => {
     setTitle(v);
     if (!slugTouched) setSlug(clientGenerateSlug(v));
@@ -281,6 +269,19 @@ function EditorForm({ note, initialMtime, allSlugs }: { note: NoteLike | null; i
       setSaving(false);
     }
   };
+
+  // Ctrl/Cmd+S 保存（在 handleSave 声明之后注册，避免访问顺序问题）
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        handleSave();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind, title, date, description, cover, tagsText, mood, location, imagesText, draft, slug, content]);
 
   const handleDelete = async () => {
     if (!isNew && !window.confirm(`确定删除 ${slug} 吗？git 可恢复。`)) return;

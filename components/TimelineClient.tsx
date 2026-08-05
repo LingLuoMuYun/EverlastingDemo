@@ -3,12 +3,13 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import TimelineNode from './TimelineNode';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Sparkles, LayoutGrid, ListTree, Calendar, Hash, ArrowUp } from 'lucide-react';
+import { Search, Sparkles, LayoutGrid, ListTree, Calendar, ArrowUp } from 'lucide-react';
 import Link from 'next/link';
 import { KIND_LABELS } from '../lib/types';
+import type { TimelinePost } from '../lib/types';
 
-export default function TimelineClient({ posts: initialPosts, tags }: { posts: any[], tags: { name: string, count: number }[] }) {
-  const [posts, setPosts] = useState(initialPosts);
+export default function TimelineClient({ posts: initialPosts, tags }: { posts: TimelinePost[], tags: { name: string, count: number }[] }) {
+  const [posts] = useState(initialPosts);
   const [selectedTag, setSelectedTag] = useState<string>('All');
   const [selectedKind, setSelectedKind] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState("");
@@ -74,7 +75,7 @@ export default function TimelineClient({ posts: initialPosts, tags }: { posts: a
     if (gridScrollRef.current) {
       try {
         gridScrollRef.current.scroll({ top: 0, left: 0, behavior: 'smooth' });
-      } catch (error) {
+      } catch {
         gridScrollRef.current.scrollTo(0, 0);
       }
     }

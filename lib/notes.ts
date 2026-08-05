@@ -69,7 +69,11 @@ export function getAllNotes(options?: { includeDraft?: boolean }): NoteMeta[] {
 
 /** 列表/搜索/归档用：只保留元数据，去掉正文以控制内存 */
 export function getAllNotesMeta(options?: { includeDraft?: boolean }) {
-  return getAllNotes(options).map(({ content: _content, ...meta }) => meta);
+  return getAllNotes(options).map((note) => {
+    const meta = { ...note };
+    delete (meta as Partial<NoteMeta>).content;
+    return meta;
+  });
 }
 
 export function getNote(slug: string, options?: { includeDraft?: boolean }): NoteMeta | null {

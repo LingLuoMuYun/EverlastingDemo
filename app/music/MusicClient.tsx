@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useMemo, useState } from 'react';
+import { useEffect, useRef, useMemo, useState, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, SkipBack, SkipForward, Repeat, Shuffle, RefreshCcw, Disc3, Volume2, VolumeX, Search, X } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import PageTransition from '../../components/PageTransition';
 import { useMusic } from '../../components/MusicProvider';
+import type { Song, LyricLine } from '../../components/MusicProvider';
 
 export default function MusicClient() {
   const {
@@ -22,7 +23,7 @@ export default function MusicClient() {
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const [parsedLyrics, setParsedLyrics] = useState<any[]>([]);
+  const [parsedLyrics, setParsedLyrics] = useState<LyricLine[]>([]);
 
   useEffect(() => {
     if (!currentSong) {
@@ -66,11 +67,12 @@ export default function MusicClient() {
     } else {
       setParsedLyrics(lines.map(l => ({ time: -1, text: l.trim() })).filter(l => l.text));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 精确依赖歌词相关字段，避免整首歌对象变化触发重复解析
   }, [currentSong?.id, currentSong?.lyric, currentSong?.lrc, currentSong?.lyrics]);
 
   const activeLyricIndex = useMemo(() => {
     if (!parsedLyrics.length) return -1;
-    let idx = parsedLyrics.findIndex((l: any) => l.time > currentTime) - 1;
+    let idx = parsedLyrics.findIndex((l) => l.time > currentTime) - 1;
     if (idx === -2) idx = parsedLyrics.length - 1;
     return Math.max(0, idx);
   }, [currentTime, parsedLyrics]);
@@ -107,7 +109,7 @@ export default function MusicClient() {
   const filteredPlaylist = useMemo(() => {
     if (!searchQuery.trim()) return playlist;
     const lowerQuery = searchQuery.toLowerCase();
-    return playlist.filter((song: any) =>
+    return playlist.filter((song: Song) =>
       (song.title || song.name || '').toLowerCase().includes(lowerQuery) ||
       (song.artist || song.author || '').toLowerCase().includes(lowerQuery)
     );
@@ -221,12 +223,12 @@ export default function MusicClient() {
                     <div ref={lyricContainerRef} className="h-full overflow-y-auto no-scrollbar scroll-smooth relative px-4 md:px-6 lyric-mask-container">
                         <div className="py-[30vh] md:py-[35vh] flex flex-col gap-4 md:gap-6 text-center lg:px-10">
                             {parsedLyrics.length > 0 ? (
-                              parsedLyrics.map((line: any, index: number) => {
+                              parsedLyrics.map((line, index: number) => {
                                 const isActive = index === activeLyricIndex;
                                 return (
                                   <div key={index} ref={isActive ? activeLyricRef : null}
                                     className={`transition-all duration-700 cursor-pointer px-2 md:px-4 rounded-2xl ${isActive ? 'opacity-100 scale-105 py-2 md:py-3 bg-white/10' : 'opacity-20 hover:opacity-40'}`}
-                                    onClick={() => duration > 0 && handleSeek({ target: { value: String((line.time / duration) * 100) } } as any)}
+                                    onClick={() => duration > 0 && handleSeek({ target: { value: String((line.time / duration) * 100) } } as unknown as ChangeEvent<HTMLInputElement>)}
                                   >
                                     <p className={`font-black tracking-tight leading-relaxed transition-all duration-700 ${isActive ? 'text-lg md:text-2xl text-indigo-600 dark:text-indigo-400' : 'text-sm md:text-lg text-slate-700 dark:text-slate-300'}`} style={isActive ? { textShadow: '0 0 20px rgba(99,102,241,0.15)' } : {}}>{line.text}</p>
                                   </div>
@@ -254,8 +256,8 @@ export default function MusicClient() {
                     </div>
                     <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 flex flex-col gap-2 md:gap-2.5">
                       <AnimatePresence mode='popLayout'>
-                        {filteredPlaylist.map((song: any) => {
-                          const originalIndex = playlist.findIndex((s: any) => s.id === song.id);
+                        {filteredPlaylist.map((song: Song) => {
+                          const originalIndex = playlist.findIndex((s: Song) => s.id === song.id);
                           const isPlayingThis = (song.id === currentSong.id);
                           return (
                             <motion.div layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} key={song.id} onClick={() => handlePlaySong(originalIndex)} className={`group flex items-center justify-between p-3 md:p-4 rounded-xl md:rounded-2xl cursor-pointer transition-all border ${isPlayingThis ? 'bg-white/60 dark:bg-slate-700/80 shadow-md border-indigo-500/30' : 'border-transparent hover:bg-white/30 dark:hover:bg-slate-700/40'}`}>

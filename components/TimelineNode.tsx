@@ -2,8 +2,9 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
+import type { TimelinePost } from "../lib/types";
 
-export default function TimelineNode({ post, index }: { post: any, index: number }) {
+export default function TimelineNode({ post, index }: { post: TimelinePost, index: number }) {
   // 判断是放在左边还是右边（偶数左，奇数右）
   const isLeft = index % 2 === 0;
 

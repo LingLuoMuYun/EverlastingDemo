@@ -3,6 +3,7 @@ import PageTransition from '../../components/PageTransition';
 import { siteConfig } from '../../siteConfig';
 import TimelineClient from '../../components/TimelineClient';
 import { getAllNotesMeta } from '../../lib/notes';
+import type { TimelinePost } from '../../lib/types';
 // 🌟 1. 引入 ToastProvider 喵！
 import { ToastProvider } from '../../components/ToastProvider';
 
@@ -11,8 +12,8 @@ export const metadata = {
 };
 
 export default function Timeline() {
-  let posts: any[] = [];
-  let tagCounts: Record<string, number> = {};
+  const posts: TimelinePost[] = [];
+  const tagCounts: Record<string, number> = {};
 
   try {
     // 🌟 内容整合：归档统一读 notes/（文章/杂谈/说说），draft 已过滤

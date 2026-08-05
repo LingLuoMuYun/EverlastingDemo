@@ -84,3 +84,14 @@ export interface TocItem {
   text: string;
   id: string;
 }
+
+/** 归档时间线展示用的笔记条目（不含正文） */
+export interface TimelinePost {
+  slug: string;
+  kind: NoteKind;
+  title: string;
+  date: string;
+  description?: string;
+  tags: string[];
+  cover: string;
+}

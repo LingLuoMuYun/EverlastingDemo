@@ -10,6 +10,39 @@ const STORAGE_KEYS = {
   playMode: 'everlasting-music-playmode',
 } as const;
 
+export interface LyricLine {
+  time: number;
+  text: string;
+}
+
+export interface Song {
+  id: string | number;
+  title: string;
+  artist: string;
+  cover: string;
+  src: string;
+  lrcUrl: string | null;
+  lyrics: LyricLine[] | string;
+  name?: string;
+  author?: string;
+  pic?: string;
+  lrc?: string;
+  lyric?: string;
+  error?: boolean;
+}
+
+interface RawSong {
+  id?: string | number;
+  name?: string;
+  artist?: string;
+  author?: string;
+  cover?: string;
+  pic?: string;
+  url?: string;
+  lrc?: string;
+  error?: boolean;
+}
+
 function readStored(key: string): string | null {
   if (typeof window === 'undefined') return null;
   try {
@@ -29,16 +62,16 @@ function writeStored(key: string, value: string) {
 }
 
 // 【增强版 LRC 歌词解析】
-function parseLrc(lrcText: string) {
+function parseLrc(lrcText: string): LyricLine[] {
   if (!lrcText || lrcText.length > 30000) return [];
 
   const lines = lrcText.split(/\r?\n/);
-  const result = [];
+  const result: LyricLine[] = [];
 
-  for (let line of lines) {
+  for (const line of lines) {
     const matches = [...line.matchAll(/\[(\d{2,}):(\d{2})(?:\.(\d{2,3}))?\]/g)];
     if (matches.length > 0) {
-      let text = line.replace(/\[\d{2,}:\d{2}(?:\.\d{2,3})?\]/g, '').trim();
+      const text = line.replace(/\[\d{2,}:\d{2}(?:\.\d{2,3})?\]/g, '').trim();
 
       // 剔除控制字符
       const cleanText = text.replace(/[\u0000-\u001F\u007F-\u009F\u200B-\u200D\uFEFF]/g, "");
@@ -62,9 +95,9 @@ function parseLrc(lrcText: string) {
 type PlayMode = 'loop' | 'single' | 'random';
 
 interface MusicContextType {
-  playlist: any[];
+  playlist: Song[];
   currentIndex: number;
-  currentSong: any; // 扩展了 lyrics 属性
+  currentSong: Song | undefined; // 扩展了 lyrics 属性
   isPlaying: boolean;
   progress: number;
   currentTime: number;
@@ -88,7 +121,7 @@ interface MusicContextType {
 const MusicContext = createContext<MusicContextType | null>(null);
 
 export function MusicProvider({ children }: { children: ReactNode }) {
-  const [playlist, setPlaylist] = useState<any[]>([]);
+  const [playlist, setPlaylist] = useState<Song[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -116,11 +149,11 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     const fetchMusicData = async () => {
       try {
         const res = await fetch(`/api/music?ids=${siteConfig.cloudMusicIds.join(',')}`);
-        const rawResults = await res.json();
+        const rawResults = (await res.json()) as RawSong[];
 
         const mergedPlaylist = rawResults
-          .filter((song: any) => song && song.url && !song.error)
-          .map((song: any) => ({
+          .filter((song): song is RawSong & { url: string } => Boolean(song && song.url && !song.error))
+          .map((song) => ({
             id: song.id || Math.random().toString(),
             title: song.name || '未知歌曲',
             artist: song.artist || song.author || '未知歌手',
@@ -135,7 +168,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
           else setCurrentLyric("正在为你寻找绝世好歌");
           setIsLoading(false);
         }
-      } catch (error) {
+      } catch {
         if (isMounted) { setCurrentLyric("网络初始化失败"); setIsLoading(false); }
       }
     };
@@ -152,7 +185,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     const currentSong = playlist[currentIndex];
     setLyrics([]);
     setCurrentLyric("♪ 正在缓冲 ♪");
-    if (currentSong.lyrics && currentSong.lyrics.length > 0) {
+    if (Array.isArray(currentSong.lyrics) && currentSong.lyrics.length > 0) {
       if (isMounted) {
         setLyrics(currentSong.lyrics);
         setCurrentLyric(currentSong.lyrics[0]?.text || "\u266a \u7eaf\u4eab\u97f3\u4e50 \u266a");
@@ -181,6 +214,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       }
     }
     return () => { isMounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 故意只依赖 currentIndex 与长度，避免 playlist 更新触发无限循环
   }, [currentIndex, playlist.length]); // 移除 playlist 依赖防止无限循环，只依赖长度
 
   // 🌟 4. 同步音量到 audio 元素

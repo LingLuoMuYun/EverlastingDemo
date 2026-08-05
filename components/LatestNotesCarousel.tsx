@@ -4,8 +4,18 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { KIND_LABELS } from "../lib/types";
+import type { NoteKind } from "../lib/types";
 
-export default function LatestNotesCarousel({ notes }: { notes: any[] }) {
+interface CarouselNote {
+  slug: string;
+  kind?: NoteKind;
+  title: string;
+  description?: string;
+  cover?: string;
+  formattedDate?: string;
+}
+
+export default function LatestNotesCarousel({ notes }: { notes: CarouselNote[] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
