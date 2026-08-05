@@ -17,7 +17,7 @@ export default async function Timeline({ searchParams }: { searchParams: Promise
   const tagCounts: Record<string, number> = {};
 
   try {
-    // 🌟 内容整合：归档统一读 notes/（文章/杂谈/说说），draft 已过滤
+    // 🌟 内容整合：归档统一读 notes/（文章/杂谈），draft 已过滤
     const allNotes = getAllNotesMeta();
     allNotes.forEach(note => {
       const postTags = note.tags && note.tags.length > 0 ? note.tags : ['未分类'];

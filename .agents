@@ -49,7 +49,7 @@ scripts/       # 工具脚本：笔记校验、旧目录迁移
 notes/*.md     # 全部内容，文件名即 slug
 ```
 
-笔记 frontmatter 必须包含 `kind`（`article`=文章 / `talk`=杂谈 / `moment`=说说）与 `date`；可选 `title`、`description`、`cover`、`tags`、`mood`、`location`、`images`、`draft`、`updated`。slug 仅允许小写字母 / 数字 / 中划线；`draft: true` 的笔记前台不可见。
+笔记 frontmatter 必须包含 `kind`（`article`=文章 / `talk`=杂谈，原「说说」已并入杂谈）与 `date`；可选 `title`（杂谈可省略，展示时取正文首行）、`description`、`cover`、`tags`、`mood`、`location`、`draft`、`updated`。slug 仅允许小写字母 / 数字 / 中划线；`draft: true` 的笔记前台不可见。
 
 `node_modules/`、`.next/`、`out/`、`*.tsbuildinfo`、`.env*`（除 `.env.example`）已在 `.gitignore`，不要提交；也不要改动 `.env*` 或输出任何密钥 / Token / 连接串。
 

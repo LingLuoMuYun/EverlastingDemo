@@ -1,5 +1,5 @@
 ---
-kind: moment
+kind: talk
 title: The first memo
 date: '2026-08-05 02:59'
 cover: >-

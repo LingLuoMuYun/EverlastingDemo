@@ -8,7 +8,7 @@ import { getCached, clearCache } from "./cache";
 export const NOTES_DIR = path.join(process.cwd(), "notes");
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const KINDS: NoteKind[] = ["article", "talk", "moment"];
+const KINDS: NoteKind[] = ["article", "talk"];
 const CACHE_KEY = "notes:all";
 
 /** 将 Markdown 源码片段转为纯文本（去除标记与 HTML 标签、折叠空白），用于列表/首页预览 */

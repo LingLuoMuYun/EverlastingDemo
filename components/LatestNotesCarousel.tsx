@@ -29,7 +29,7 @@ export default function LatestNotesCarousel({ notes }: { notes: CarouselNote[] }
   if (!notes || notes.length === 0) return null;
 
   const current = notes[currentIndex];
-  const kindLabel = current.kind ? KIND_LABELS[current.kind as "article" | "talk" | "moment"] : "笔记";
+  const kindLabel = current.kind ? KIND_LABELS[current.kind] : "笔记";
 
   return (
     <div className="md:col-span-4 rounded-3xl bg-white/40 dark:bg-slate-800/50 backdrop-blur-md border border-white/40 dark:border-white/10 shadow-xl overflow-hidden relative group min-h-[420px] h-full flex flex-col">

@@ -4,12 +4,12 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { KIND_LABELS } from "../lib/types";
+import { KIND_LABELS, type NoteKind } from "../lib/types";
 import { siteConfig } from "../siteConfig";
 
 type Note = {
   slug: string;
-  kind: "article" | "talk" | "moment";
+  kind: NoteKind;
   title?: string;
   date: string;
   updated?: string;
@@ -25,9 +25,8 @@ type Note = {
 const KIND_COLORS: Record<string, string> = {
   article: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/10",
   talk: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/10",
-  moment: "bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/10",
 };
-const KIND_VALUES = ["article", "talk", "moment"];
+const KIND_VALUES = ["article", "talk"];
 
 function displayTitle(note: Note): string {
   if (note.title) return note.title;
@@ -44,7 +43,7 @@ export default function NoteBoard({ notes, initialKind }: { notes: Note[]; initi
   );
   const [activeTag, setActiveTag] = useState<string>("全部");
 
-  /** kind Tab 切换时同步 URL，支持 /notes?kind=moment 深链 */
+  /** kind Tab 切换时同步 URL，支持 /notes?kind=talk 深链 */
   const handleKindChange = (kind: string) => {
     setActiveKind(kind);
     const url = kind === "全部" ? pathname : `${pathname}?kind=${kind}`;
@@ -97,7 +96,7 @@ export default function NoteBoard({ notes, initialKind }: { notes: Note[]; initi
         </div>
 
         <div className="flex flex-wrap justify-center gap-1.5 md:gap-2 px-2 md:px-0">
-          {["全部", "article", "talk", "moment"].map((kind) => (
+          {["全部", "article", "talk"].map((kind) => (
             <button
               key={kind}
             onClick={() => handleKindChange(kind)}
@@ -107,7 +106,7 @@ export default function NoteBoard({ notes, initialKind }: { notes: Note[]; initi
                   : "bg-white/30 dark:bg-slate-800/30 text-slate-600 dark:text-slate-400 border-white/20 dark:border-white/5 hover:bg-white/60 dark:hover:bg-slate-700/60"
               }`}
             >
-              {kind === "全部" ? kind : KIND_LABELS[kind as "article" | "talk" | "moment"]}
+              {kind === "全部" ? kind : KIND_LABELS[kind as NoteKind]}
             </button>
           ))}
         </div>

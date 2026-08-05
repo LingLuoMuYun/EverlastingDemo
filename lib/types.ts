@@ -9,13 +9,12 @@ export interface PostMeta {
   excerpt?: string;
 }
 
-/** 内容整合后的统一类型：article=文章 / talk=杂谈 / moment=说说 */
-export type NoteKind = "article" | "talk" | "moment";
+/** 内容整合后的统一类型：article=文章 / talk=杂谈（杂谈已并入原说说） */
+export type NoteKind = "article" | "talk";
 
 export const KIND_LABELS: Record<NoteKind, string> = {
   article: "文章",
   talk: "杂谈",
-  moment: "说说",
 };
 
 export interface NoteMeta {
@@ -36,14 +35,6 @@ export interface NoteMeta {
 
 export interface ChatterMeta extends PostMeta {
   mood?: string;
-}
-
-export interface MomentMeta {
-  id: string;
-  date: string;
-  location?: string;
-  images?: string[];
-  content: string;
 }
 
 export interface Friend {

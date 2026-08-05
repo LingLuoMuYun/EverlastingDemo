@@ -1,4 +1,5 @@
 // scripts/migrate-notes.mjs —— 将 posts/ chatters/ moments/ 迁移为 notes/ 统一目录
+// 注：杂谈/说说已合并，moments/ 旧目录的内容按 kind: talk 迁入
 // 用法：
 //   node scripts/migrate-notes.mjs --dry-run   # 只输出迁移报告，不写文件
 //   node scripts/migrate-notes.mjs             # 正式迁移（跳过内容一致的已存在目标）
@@ -15,8 +16,8 @@ const force = process.argv.includes("--force");
 const SOURCES = [
   { dir: "posts", kind: "article" },
   { dir: "chatters", kind: "talk" },
-  { dir: "moments", kind: "moment" },
-  { dir: path.join("posts", "moments"), kind: "moment" },
+  { dir: "moments", kind: "talk" },
+  { dir: path.join("posts", "moments"), kind: "talk" },
 ];
 
 function pad(n) {

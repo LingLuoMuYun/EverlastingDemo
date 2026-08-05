@@ -6,7 +6,7 @@ import matter from "gray-matter";
 
 const NOTES_DIR = path.join(process.cwd(), "notes");
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const KINDS = ["article", "talk", "moment"];
+const KINDS = ["article", "talk"];
 const strict = process.argv.includes("--strict");
 
 if (!fs.existsSync(NOTES_DIR)) {
@@ -23,7 +23,7 @@ for (const file of files) {
   const { data } = matter(fs.readFileSync(path.join(NOTES_DIR, file), "utf8"));
   if (!KINDS.includes(data.kind)) errors.push(`${file}: kind 缺失或非法（${KINDS.join("/")}）`);
   if (!data.date || isNaN(new Date(data.date).getTime())) errors.push(`${file}: date 缺失或不可解析`);
-  if (!strict && data.kind !== "moment" && !data.title) errors.push(`${file}: 建议提供 title（moment 可省略）`);
+  if (!strict && data.kind === "article" && !data.title) errors.push(`${file}: 文章需要 title（杂谈可省略）`);
 }
 
 if (errors.length) {

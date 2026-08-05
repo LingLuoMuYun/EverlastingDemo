@@ -247,7 +247,7 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush, embedded }: { note
   const validate = (): string | null => {
     if (!SLUG_RE.test(slug)) return "slug 只能包含小写字母/数字/中划线";
     if (!date) return "请填写日期";
-    if (kind !== "moment" && !title.trim()) return "文章/杂谈需要标题";
+    if (kind === "article" && !title.trim()) return "文章需要标题";
     if (isNew && allSlugs.includes(slug)) return "slug 已存在，请换一个";
     return null;
   };
@@ -262,7 +262,7 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush, embedded }: { note
     try {
       const data = {
         kind,
-        title: kind === "moment" ? title.trim() || undefined : title.trim(),
+        title: title.trim() || undefined,
         date: date.replace("T", " "),
         description: description.trim() || undefined,
         cover: cover.trim() || undefined,
@@ -346,7 +346,7 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush, embedded }: { note
     }
   };
 
-  /** 上传图片到 public/uploads/notes（仅本地 dev），成功后插入 Markdown 并同步说说图片列表 */
+  /** 上传图片到 public/uploads/notes（仅本地 dev），成功后插入 Markdown 并同步图片列表 */
   const handleUploadImages = async (files: FileList | File[]) => {
     const list = Array.from(files).filter((f) => f.type.startsWith("image/"));
     if (list.length === 0) {
@@ -463,7 +463,6 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush, embedded }: { note
               <select value={kind} onChange={(e) => setKind(e.target.value as NoteKind)} className={inputCls}>
                 <option value="article">文章</option>
                 <option value="talk">杂谈</option>
-                <option value="moment">说说</option>
               </select>
             </div>
             <div>
@@ -483,7 +482,7 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush, embedded }: { note
             </div>
           </div>
           <div className="mt-4">
-            <label className={labelCls}>标题（说说可留空，自动取正文首行）</label>
+            <label className={labelCls}>标题（杂谈可留空，自动取正文首行）</label>
             <input value={title} onChange={(e) => handleTitleChange(e.target.value)} placeholder="标题" className={inputCls} />
           </div>
           <div className="mt-4">
@@ -504,11 +503,11 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush, embedded }: { note
           </div>
           <div className="grid grid-cols-2 gap-4 mt-4">
             <div>
-              <label className={labelCls}>心情（杂谈/说说）</label>
+              <label className={labelCls}>心情（杂谈）</label>
               <input value={mood} onChange={(e) => setMood(e.target.value)} placeholder="开心" className={inputCls} />
             </div>
             <div>
-              <label className={labelCls}>定位（说说）</label>
+              <label className={labelCls}>定位（杂谈）</label>
               <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="北京" className={inputCls} />
             </div>
           </div>

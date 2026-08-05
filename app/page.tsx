@@ -40,7 +40,7 @@ type HomeNote = Omit<NoteMeta, "content"> & {
 };
 
 export default function Home() {
-  // 🌟 内容整合：统一从 notes/ 读取（文章/杂谈/说说），draft 已在 lib/notes.ts 过滤
+  // 🌟 内容整合：统一从 notes/ 读取（文章/杂谈），draft 已在 lib/notes.ts 过滤
   let allNotes: HomeNote[] = [];
   try {
     allNotes = getAllNotesMeta().map(note => ({
@@ -89,7 +89,7 @@ export default function Home() {
               {/* 歌词栏 */}
               <div className="w-full mt-[-10px]"><LyricBar/></div>
 
-              {/* 第二行：文章轮播 + 照片墙 + 说说 + 主题切换 */}
+              {/* 第二行：文章轮播 + 照片墙 + 主题切换 */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full">
 
                 {/* 左侧：文章轮播 (电脑端占4列，手机端排最上面) */}
@@ -136,7 +136,7 @@ export default function Home() {
                                 <div className="text-[9px] md:text-[10px] text-slate-400 font-bold mt-0.5">{n.formattedDate}</div>
                               </div>
                               <span className="text-[9px] md:text-[10px] font-black px-1.5 md:px-2 py-0.5 rounded-md border shrink-0 text-indigo-600 dark:text-indigo-400 bg-indigo-500/5 dark:bg-indigo-400/10 border-indigo-500/10">
-                                {KIND_LABELS[n.kind as 'article' | 'talk' | 'moment'] || '笔记'}
+                                {KIND_LABELS[n.kind] || '笔记'}
                               </span>
                             </Link>
                           ))}

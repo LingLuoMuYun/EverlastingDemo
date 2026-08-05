@@ -7,7 +7,7 @@ import { KIND_LABELS } from '../lib/types';
 
 interface Post {
   slug: string;
-  kind?: "article" | "talk" | "moment";
+  kind?: "article" | "talk";
   title?: string;
   description?: string;
   date?: string;
@@ -135,7 +135,7 @@ export default function SearchBar({ posts = [] }: { posts: Post[] }) {
                       )}
                       {post.kind && (
                         <span className="text-[10px] font-black px-2 py-1 rounded-md shrink-0 mt-1 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-                          {KIND_LABELS[post.kind as 'article' | 'talk' | 'moment']}
+                          {KIND_LABELS[post.kind]}
                         </span>
                       )}
                     </div>

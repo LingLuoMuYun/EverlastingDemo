@@ -27,7 +27,7 @@ export default function TimelineClient({
     initialTag && tags.some((t) => t.name === initialTag) ? initialTag : 'All'
   );
   const [selectedKind, setSelectedKind] = useState<string>(
-    initialKind && ['article', 'talk', 'moment'].includes(initialKind) ? initialKind : 'All'
+    initialKind && ['article', 'talk'].includes(initialKind) ? initialKind : 'All'
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -128,7 +128,7 @@ export default function TimelineClient({
       </div>
 
       <div className="flex flex-wrap justify-center gap-2 mb-8 relative z-20">
-        {['All', 'article', 'talk', 'moment'].map((kind) => (
+        {['All', 'article', 'talk'].map((kind) => (
           <button
             key={kind}
             onClick={() => handleKindChange(kind)}
@@ -138,7 +138,7 @@ export default function TimelineClient({
                 : 'bg-white/30 dark:bg-slate-800/30 text-slate-600 dark:text-slate-400 border-white/20 dark:border-white/5 hover:bg-white/60 dark:hover:bg-slate-700/60'
             }`}
           >
-            {kind === 'All' ? '全部' : KIND_LABELS[kind as 'article' | 'talk' | 'moment']}
+            {kind === 'All' ? '全部' : KIND_LABELS[kind as 'article' | 'talk']}
           </button>
         ))}
       </div>

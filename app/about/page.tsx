@@ -78,7 +78,7 @@ export default async function AboutPage() {
   // 🌟 内容整合：关于页活动时间线统一读 notes/
   const allActivities = getAllNotesMeta().map(note => ({
     id: `notes-${note.slug}`,
-    type: KIND_LABELS[note.kind] as '文章' | '杂谈' | '说说',
+    type: KIND_LABELS[note.kind] as '文章' | '杂谈',
     title: note.title || note.slug,
     date: note.date ? new Date(note.date).toISOString() : '1970-01-01T00:00:00Z',
     url: `/notes/${note.slug}`
