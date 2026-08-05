@@ -15,7 +15,7 @@ export default function NoteImages({ images }: { images: string[] }) {
         onClick={() => setLightbox({ images, index: 0 })}
         className="max-w-[80%] sm:max-w-[280px] overflow-hidden rounded-xl md:rounded-2xl border border-slate-200/50 dark:border-white/10 shadow-lg md:shadow-xl cursor-zoom-in group"
       >
-        <img src={images[0]} alt="moment" className="w-full h-auto max-h-[300px] md:max-h-[400px] object-contain group-hover:scale-105 transition-transform duration-500" />
+        <img src={images[0]} alt="moment" referrerPolicy="no-referrer" className="w-full h-auto max-h-[300px] md:max-h-[400px] object-contain group-hover:scale-105 transition-transform duration-500" />
       </div>
     </div>
   );
@@ -34,7 +34,7 @@ export default function NoteImages({ images }: { images: string[] }) {
                 onClick={() => setLightbox({ images, index: idx })}
                 className="group relative aspect-square overflow-hidden rounded-lg md:rounded-xl bg-slate-200/20 dark:bg-slate-700/20 border border-slate-200/50 dark:border-white/10 cursor-zoom-in"
               >
-                <img src={src} alt="moment" className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                <img src={src} alt="moment" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                 {isLastVisible && (
                   <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white backdrop-blur-[2px]">
                     <span className="text-lg md:text-xl font-black">+{count - 9}</span>
@@ -66,6 +66,7 @@ export default function NoteImages({ images }: { images: string[] }) {
               animate={{ opacity: 1, scale: 1, x: 0 }}
               exit={{ opacity: 0, scale: 0.9, x: -50 }}
               src={lightbox.images[lightbox.index]}
+              referrerPolicy="no-referrer"
               className="max-w-full max-h-[75vh] md:max-h-[85vh] object-contain rounded-2xl shadow-[0_0_80px_rgba(0,0,0,0.5)] border border-white/10"
               alt="fullscreen"
             />

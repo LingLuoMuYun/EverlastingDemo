@@ -44,7 +44,7 @@ export default function LatestNotesCarousel({ notes }: { notes: CarouselNote[] }
           transition={{ duration: 0.8 }}
           className="absolute inset-0 z-0"
         >
-          <img src={current.cover} className="w-full h-full object-cover opacity-90 transition-transform duration-1000 group-hover:scale-105" alt={current.title || "笔记"} />
+          <img src={current.cover} referrerPolicy="no-referrer" className="w-full h-full object-cover opacity-90 transition-transform duration-1000 group-hover:scale-105" alt={current.title || "笔记"} />
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent"></div>
         </motion.div>
       </AnimatePresence>

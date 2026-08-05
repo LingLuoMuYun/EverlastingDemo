@@ -10,11 +10,30 @@ import rehypeHighlight from "rehype-highlight";
 import rehypeKatex from "rehype-katex";
 import rehypeStringify from "rehype-stringify";
 import type { TocItem } from "./types";
+import type { Root, Element, RootContent } from "hast";
 
 const HIGHLIGHT_SUBSET = [
   "cpp", "c", "python", "java", "javascript", "typescript",
   "go", "rust", "bash", "json", "html", "css", "sql", "xml",
 ];
+
+/**
+ * 给渲染出的 <img> 统一加 referrerPolicy="no-referrer"，
+ * 避免图床按 Referer 防盗链拦截（本地/线上页面加载外链图都会携带本站 Referer）。
+ */
+function rehypeNoReferrerImages() {
+  return (tree: Root) => {
+    const visit = (node: RootContent) => {
+      if (node.type !== "element") return;
+      const el = node as Element;
+      if (el.tagName === "img") {
+        el.properties = { ...el.properties, referrerPolicy: "no-referrer" };
+      }
+      el.children.forEach(visit);
+    };
+    tree.children.forEach(visit);
+  };
+}
 
 /** 文本预清洗：统一换行 → 修数字列表 → 代码块保护 → 正文连续空行转 <br>（顺序与源码一致） */
 export function preprocessContent(content: string): string {
@@ -45,6 +64,7 @@ export async function renderMarkdown(content: string): Promise<string> {
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeHighlight, { detect: true, ignoreMissing: true, subset: HIGHLIGHT_SUBSET })
     .use(rehypeKatex)
+    .use(rehypeNoReferrerImages)
     .use(rehypeStringify, { allowDangerousHtml: true })
     .process(preprocessContent(content));
   return processed.toString();

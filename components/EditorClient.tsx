@@ -148,6 +148,9 @@ function EditorForm({ note, initialMtime, allSlugs }: { note: NoteLike | null; i
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const contentRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
   const storageKey = `note-unsaved:${note?.slug || "new"}`;
 
@@ -306,6 +309,64 @@ function EditorForm({ note, initialMtime, allSlugs }: { note: NoteLike | null; i
     }
   };
 
+  /** 上传图片到 public/uploads/notes（仅本地 dev），成功后插入 Markdown 并同步说说图片列表 */
+  const handleUploadImages = async (files: FileList | File[]) => {
+    const list = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (list.length === 0) {
+      showToast("未识别到图片文件", "error");
+      return;
+    }
+    setUploading(true);
+    try {
+      for (const file of list) {
+        const form = new FormData();
+        form.append("file", file);
+        const res = await fetch("/api/notes/upload", {
+          method: "POST",
+          headers: authHeaders(),
+          body: form,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          showToast(data.error || "上传失败", "error");
+          continue;
+        }
+        const url = String(data.url || "");
+        if (!url) continue;
+        const alt = (file.name.replace(/\.[^.]+$/, "") || "图片").replace(/["[\]]/g, "");
+        insertIntoContent(`![${alt}](${url})`);
+        if (kind === "moment") {
+          setImagesText((prev) => (prev ? `${prev}, ${url}` : url));
+        }
+        showToast(`已上传 ${file.name}（记得 git push 发布）`, "success");
+      }
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  /** 在 Markdown 光标处插入片段 */
+  const insertIntoContent = (text: string) => {
+    const el = contentRef.current;
+    if (!el) {
+      setContent((c) => `${c}\n${text}\n`);
+      return;
+    }
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? start;
+    const before = el.value.slice(0, start);
+    const after = el.value.slice(end);
+    const prefix = before.length > 0 && !before.endsWith("\n") ? "\n" : "";
+    const suffix = after.length > 0 && !after.startsWith("\n") ? "\n" : "";
+    const next = `${before}${prefix}${text}${suffix}${after}`;
+    setContent(next);
+    requestAnimationFrame(() => {
+      const cursor = before.length + prefix.length + text.length + suffix.length;
+      el.focus();
+      el.setSelectionRange(cursor, cursor);
+    });
+  };
+
   const backLink = (
     <Link href="/editor" className="text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
       ← 返回列表
@@ -420,14 +481,53 @@ function EditorForm({ note, initialMtime, allSlugs }: { note: NoteLike | null; i
         </div>
       </div>
 
-      <div className="rounded-2xl bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-white/40 dark:border-white/10 shadow-lg p-5">
-        <div className="flex items-center justify-between mb-3">
+      <div
+        className="rounded-2xl bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-white/40 dark:border-white/10 shadow-lg p-5"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          if (e.dataTransfer.files?.length) handleUploadImages(e.dataTransfer.files);
+        }}
+      >
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <h3 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Markdown 源码</h3>
-          <span className="text-[10px] text-slate-400 font-bold">自动保存到浏览器草稿，Ctrl+S 正式保存</span>
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-[10px] text-slate-400 font-bold">自动保存草稿 · 支持粘贴/拖拽上传图片，随 git push 发布</span>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="px-3 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-[11px] font-black hover:bg-indigo-500/20 transition-colors disabled:opacity-50"
+            >
+              {uploading ? "上传中..." : "上传图片"}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/gif,image/webp,image/avif"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files?.length) handleUploadImages(e.target.files);
+                e.target.value = "";
+              }}
+            />
+          </div>
         </div>
         <textarea
+          ref={contentRef}
           value={content}
           onChange={(e) => setContent(e.target.value)}
+          onPaste={(e) => {
+            const files = Array.from(e.clipboardData?.items || [])
+              .filter((i) => i.kind === "file")
+              .map((i) => i.getAsFile())
+              .filter((f): f is File => f !== null);
+            if (files.length) {
+              e.preventDefault();
+              handleUploadImages(files);
+            }
+          }}
           rows={16}
           placeholder="正文 Markdown..."
           className="w-full bg-slate-950/80 dark:bg-slate-950/90 text-slate-100 border border-white/10 rounded-xl px-4 py-3 text-sm leading-relaxed font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all resize-y"

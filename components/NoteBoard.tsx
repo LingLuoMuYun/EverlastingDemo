@@ -137,7 +137,7 @@ export default function NoteBoard({ notes }: { notes: Note[] }) {
                 >
                   {note.cover && (
                     <div className="w-full h-28 md:h-52 overflow-hidden relative">
-                      <img src={note.cover} alt="cover" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+                      <img src={note.cover} alt="cover" referrerPolicy="no-referrer" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent"></div>
                       <span className={`absolute top-2 right-2 md:top-4 md:right-4 px-2 py-1 md:px-3 md:py-1.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest border backdrop-blur-md ${KIND_COLORS[note.kind]} bg-white/30 dark:bg-slate-900/40`}>
                         {KIND_LABELS[note.kind]}

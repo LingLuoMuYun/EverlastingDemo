@@ -46,7 +46,7 @@ export default async function NoteDetail({ params }: { params: Promise<{ slug: s
           <article className="flex-1 bg-white/60 dark:bg-slate-800/50 backdrop-blur-xl rounded-[40px] shadow-2xl border border-white/40 dark:border-white/10 overflow-hidden transition-colors duration-700">
             {note.cover && (
               <div className="w-full aspect-video bg-slate-200 dark:bg-slate-700 relative group">
-                <img src={note.cover} alt="封面" className="w-full h-full object-cover opacity-90 transition-transform duration-1000 group-hover:scale-105" />
+                <img src={note.cover} alt="封面" referrerPolicy="no-referrer" className="w-full h-full object-cover opacity-90 transition-transform duration-1000 group-hover:scale-105" />
               </div>
             )}
 
