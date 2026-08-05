@@ -41,6 +41,8 @@ npm run dev
 | `QWEATHER_KEY` | 和风天气密钥（天气挂件，可选） |
 | `EDITOR_TOKEN` | 本地编辑器鉴权（可选；开启后请求需带 `Authorization: Bearer <token>`） |
 | `AUTO_PUSH` | 本地编辑器保存后自动 `git commit + push`（默认开；置 `0` 关闭；生产始终关闭） |
+| `MUSIC_MAX_MB` | 音乐管理本地音频上传大小上限（MB，默认 50） |
+| `MUSIC_COMMIT_FILES` | 音乐管理本地音频是否随 git 提交（默认 `1` 入库；置 `0` 不入库，生产需另行上传） |
 
 ## ✍️ 写作：内容模型
 
@@ -96,6 +98,7 @@ npm run build               # 生产构建
 npm run start               # 生产运行
 npm run lint                # 代码检查
 node scripts/validate-notes.mjs            # 校验 notes/ frontmatter
+node scripts/validate-music.mjs            # 校验 data/music/library.json 结构与本地文件
 node scripts/migrate-notes.mjs --dry-run   # 旧目录（posts/chatters/moments）迁移预演
 node scripts/migrate-notes.mjs             # 执行迁移（幂等）
 ```

@@ -1,7 +1,6 @@
 // scripts/migrate-music.mjs —— 从网易云拉取歌曲元数据+歌词，生成/合并 data/music/library.json
-// 用法：node scripts/migrate-music.mjs
-//       node scripts/migrate-music.mjs --ids=1441758494,1350160463
-// 缺省读取 siteConfig.ts 的 cloudMusicIds（当前线上曲库来源）
+// 用法：node scripts/migrate-music.mjs --ids=1441758494,1350160463
+// 从网易云拉取歌曲元数据+歌词，合并到 data/music/library.json（按 id 更新或新增）
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -70,7 +69,7 @@ async function main() {
   const argIds = process.argv.find((a) => a.startsWith("--ids="))?.split("=")[1] || "";
   const ids = argIds ? argIds.split(",").map((s) => s.trim()).filter(Boolean) : extractCloudMusicIds();
   if (!ids.length) {
-    console.error("未找到要迁移的网易云 ID（可在 siteConfig.cloudMusicIds 配置或 --ids= 传入）");
+    console.error("未找到要迁移的网易云 ID，请用 --ids=1441758494,1350160463 传入");
     process.exit(1);
   }
 

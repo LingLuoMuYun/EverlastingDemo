@@ -11,6 +11,8 @@
 > 5. 分期实施计划、风险对策与验收标准。
 >
 > **v2.0 更新说明（2026-08-05）**：应站主要求，将"editor / music 等后台入口分散"纳入设计——新增统一管理后台 `/admin`：`/admin` 为总览，`/admin/notes`（原 `/editor` 系列 301 迁移）、`/admin/music`（音乐曲库管理），二期可扩展友链/项目/相册/站点配置等模块；音乐曲库管理全部设计迁入 Admin 框架。
+>
+> **实施状态（2026-08-05）**：阶段 0-4 已全部落地并推送——P0 播放器修复、曲库数据层与 `/api/music/library`、统一管理后台 `/admin`（笔记+音乐）、播放器体验层（Media Session/快捷键/队列持久化/预加载/顺序播放）、收尾（音量调试面板、README/.env 更新、旧 `/api/music` 移除）。
 
 ---
 
@@ -281,7 +283,7 @@ export const ADMIN_MODULES: AdminModule[] = [
 | `/api/music/library` | DELETE | 删除曲目 | 本地+Token | 可选 `deleteFile:true` 连带删除本地音频 |
 | `/api/music/upload` | POST | 上传本地音频 | 本地+Token | multipart；校验扩展名/大小/文件名，写入 `public/music/` |
 | `/api/music/netease/preview` | GET | 网易云 ID 预览 | 本地+Token | 返回详情+歌词+音频可用性，**不写库**，供后台确认 |
-| `/api/music` | GET | 旧接口（ids 批量） | 公开 | 兼容期保留，阶段 4 结束后移除 |
+| `/api/music` | GET | 旧接口（ids 批量） | 公开 | **已移除（阶段 4）**，播放器统一走 `/api/music/library` |
 
 鉴权与本地限定完全复用编辑器模式：
 

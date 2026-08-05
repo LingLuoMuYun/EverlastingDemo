@@ -1,10 +1,17 @@
 "use client";
 
 import { createContext, useContext, useState, useRef, useEffect, ReactNode } from 'react';
-import { siteConfig } from '../siteConfig';
 import { useToast } from './ToastProvider';
 import { useMediaSession } from './useMediaSession';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
+
+type MusicDebugHandle = Record<string, unknown>;
+
+declare global {
+  interface Window {
+    __musicDebug?: MusicDebugHandle;
+  }
+}
 
 // 【状态持久化】音量 / 静音 / 播放模式记忆到 localStorage
 const STORAGE_KEYS = {
@@ -161,6 +168,56 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const failCountRef = useRef<Record<string, number>>({});
   const restoreRef = useRef<number | null>(null);
 
+  // 🌟 开发模式调试句柄：DevTools 里直接查看播放器内部状态（音量/缓冲/错误/Media Session）
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return;
+    const dbg: MusicDebugHandle = {
+      get audio() {
+        return audioRef.current;
+      },
+      get volume() {
+        return audioRef.current?.volume ?? null;
+      },
+      get muted() {
+        return audioRef.current?.muted ?? null;
+      },
+      get playbackRate() {
+        return audioRef.current?.playbackRate ?? null;
+      },
+      get readyState() {
+        return audioRef.current?.readyState ?? null;
+      },
+      get networkState() {
+        return audioRef.current?.networkState ?? null;
+      },
+      get currentTime() {
+        return audioRef.current?.currentTime ?? 0;
+      },
+      get duration() {
+        return audioRef.current?.duration || 0;
+      },
+      get bufferedSeconds() {
+        const el = audioRef.current;
+        if (!el || el.buffered.length === 0) return 0;
+        return el.buffered.end(el.buffered.length - 1);
+      },
+      get error() {
+        return audioRef.current?.error ?? null;
+      },
+      get mediaSession() {
+        return typeof navigator !== "undefined" && "mediaSession" in navigator ? "supported" : "unsupported";
+      },
+      get playbackState() {
+        if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return "n/a";
+        return navigator.mediaSession.playbackState;
+      },
+    };
+    window.__musicDebug = dbg;
+    return () => {
+      delete window.__musicDebug;
+    };
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -211,21 +268,11 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     };
 
     const fetchMusicData = async () => {
-      // 新数据源：本地曲库 data/music/library.json
       try {
         const res = await fetch(`/api/music/library`);
         if (!res.ok) throw new Error(`library ${res.status}`);
         const data = (await res.json()) as { tracks: RawSong[] };
         applyPlaylist(toSongs(data.tracks));
-        return;
-      } catch {
-        // 降级：旧接口（siteConfig.cloudMusicIds，阶段 4 移除）
-      }
-
-      try {
-        const res = await fetch(`/api/music?ids=${siteConfig.cloudMusicIds.join(',')}`);
-        const rawResults = (await res.json()) as RawSong[];
-        applyPlaylist(toSongs(rawResults));
       } catch {
         if (isMounted) { setCurrentLyric("网络初始化失败"); setIsLoading(false); }
       }

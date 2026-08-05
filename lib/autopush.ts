@@ -81,5 +81,10 @@ export function autopushNotes(message: string): Promise<PushResult> {
 
 /** 音乐管理后台：只提交 data/music 与 public/music */
 export function autopushMusic(message: string): Promise<PushResult> {
-  return autopush(["data/music", "public/music", "public/uploads/music"], message);
+  const targets = ["data/music", "public/music", "public/uploads/music"];
+  // MUSIC_COMMIT_FILES=0：本地音频不入库（曲库元数据仍提交），生产需另行上传音频
+  if (process.env.MUSIC_COMMIT_FILES === "0") {
+    return autopush(targets.filter((t) => !t.startsWith("public/music")), message);
+  }
+  return autopush(targets, message);
 }
