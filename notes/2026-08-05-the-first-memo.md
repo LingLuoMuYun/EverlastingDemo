@@ -6,10 +6,6 @@ cover: >-
   https://c-ssl.dtstatic.com/uploads/blog/202308/01/y9SBMEm1TbYyqvm.thumb.1000_0.png
 tags: []
 location: 杭州
-images:
-  - >-
-    https://c-ssl.dtstatic.com/uploads/blog/202308/01/y9SBMEm1TbYyqvm.thumb.1000_0.png
-  - /uploads/notes/note-20260805-145538-9guehq.jpg
 draft: false
 updated: '2026-08-05 14:55'
 ---
