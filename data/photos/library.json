@@ -8,7 +8,13 @@
       "cover": "",
       "date": "2026-08-05",
       "order": 1,
-      "photos": []
+      "photos": [
+        {
+          "id": "photo-msg13pgt-dlui",
+          "url": "/uploads/photos/photo-20260805-195346-efg1v7.jpg",
+          "order": 1
+        }
+      ]
     }
   ]
 }
