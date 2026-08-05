@@ -12,7 +12,7 @@
 >
 > **v2.0 更新说明（2026-08-05）**：应站主要求，将"editor / music 等后台入口分散"纳入设计——新增统一管理后台 `/admin`：`/admin` 为总览，`/admin/notes`（原 `/editor` 系列 301 迁移）、`/admin/music`（音乐曲库管理），二期可扩展友链/项目/相册/站点配置等模块；音乐曲库管理全部设计迁入 Admin 框架。
 >
-> **实施状态（2026-08-05）**：阶段 0-4 已全部落地并推送——P0 播放器修复、曲库数据层与 `/api/music/library`、统一管理后台 `/admin`（笔记+音乐）、播放器体验层（Media Session/快捷键/队列持久化/预加载/顺序播放）、收尾（音量调试面板、README/.env 更新、旧 `/api/music` 移除）；随后追加落地**歌单导入（A）**与**精细管理（B）**（见第十二章）；照片墙**阶段 A（数据层+API）与阶段 B（管理后台 `/admin/photos`）已落地**，阶段 C（前台接入）待确认（见第十三章）。
+> **实施状态（2026-08-05）**：阶段 0-4 已全部落地并推送——P0 播放器修复、曲库数据层与 `/api/music/library`、统一管理后台 `/admin`（笔记+音乐）、播放器体验层（Media Session/快捷键/队列持久化/预加载/顺序播放）、收尾（音量调试面板、README/.env 更新、旧 `/api/music` 移除）；随后追加落地**歌单导入（A）**与**精细管理（B）**（见第十二章）；照片墙**阶段 A（数据层+API）、阶段 B（管理后台 `/admin/photos`）、阶段 C（前台接入）已全部落地**（见第十三章）。
 
 ---
 
@@ -713,7 +713,7 @@ audio.addEventListener("volumechange", () => console.log("volumechange", audio.v
 
 **校验与配置**：`scripts/validate-photos.mjs`（id 唯一、order 整数、本地图片存在性）；`PHOTO_MAX_MB` 环境变量。
 
-**实施状态**：阶段 A（数据层 + 4 个 API + `autopushPhotos` + 校验脚本）与阶段 B（`/admin/photos` 管理后台：相册 CRUD、多图上传、↑↓ + 拖拽排序、照片编辑/删除）已落地；阶段 C（前台接入）待确认后继续。
+**实施状态**：阶段 A（数据层 + 4 个 API + `autopushPhotos` + 校验脚本）、阶段 B（`/admin/photos` 管理后台：相册 CRUD、多图上传、↑↓ + 拖拽排序、照片编辑/删除）、阶段 C（前台接入：`/photowall` 与首页改服务端读取 `toPublicPhotoLibrary`，封面自动回退）已全部落地。
 
 ---
 

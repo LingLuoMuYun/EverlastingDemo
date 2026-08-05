@@ -7,7 +7,7 @@ import { siteConfig } from '../siteConfig';
 import ThemeToggleBlock from '../components/ThemeToggleBlock';
 import ProfileCard from '../components/ProfileCard';
 import SiteDashboard from '../components/SiteDashboard';
-import { albums } from '../data/albums';
+import { toPublicPhotoLibrary } from '../lib/photos';
 import { ToastProvider } from '../components/ToastProvider';
 import CloudPlayer from '../components/CloudPlayer';
 import LyricBar from '../components/LyricBar';
@@ -53,8 +53,17 @@ export default function Home() {
   const top5Notes: HomeNote[] = allNotes.length > 0
     ? allNotes.slice(0, 5)
     : [{ slug: 'none', kind: 'article', title: '暂无内容', description: '快去写第一篇吧！', cover: siteConfig.defaultPostCover, date: '', formattedDate: '' }];
-  const realPhotoCount = albums.reduce((total, album) => total + album.photos.length, 0);
-  const latestAlbum = albums.length > 0 ? albums[0] : { id: '', title: '照片墙', description: '查看摄影', cover: siteConfig.photoWallImage, date: '' };
+  const photoLibrary = toPublicPhotoLibrary();
+  const realPhotoCount = photoLibrary.albums.reduce((total, album) => total + album.photos.length, 0);
+  const latestAlbum = photoLibrary.albums[0] ?? {
+    id: '',
+    title: '照片墙',
+    description: '查看摄影',
+    cover: siteConfig.photoWallImage,
+    date: '',
+    order: 0,
+    photos: [],
+  };
 
   return (
     <ToastProvider>
