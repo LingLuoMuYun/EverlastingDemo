@@ -44,7 +44,12 @@ export async function POST(req: NextRequest) {
       const neteaseId = String(body.neteaseId || "").trim();
       if (!/^\d+$/.test(neteaseId)) return NextResponse.json({ error: "neteaseId 非法" }, { status: 400 });
       const meta = await fetchNeteaseTrack(neteaseId);
-      const track = addTrack({ ...meta, order: typeof body.order === "number" ? body.order : undefined });
+      const track = addTrack({
+        ...meta,
+        order: typeof body.order === "number" ? body.order : undefined,
+        tags: Array.isArray(body.tags) ? body.tags.map((t: unknown) => String(t).trim()).filter(Boolean) : undefined,
+        collectionIds: typeof body.collectionId === "string" && body.collectionId ? [body.collectionId] : undefined,
+      });
       const push = await autopushMusic(`chore(music): 新增 ${track.title}`);
       return NextResponse.json({ track, push }, { status: 201 });
     }
@@ -62,6 +67,9 @@ export async function POST(req: NextRequest) {
         artist: String(body.artist || "").trim() || "未知歌手",
         album: String(body.album || "").trim() || undefined,
         cover: String(body.cover || "").trim() || undefined,
+        duration: Number.isFinite(Number(body.duration)) ? Number(body.duration) : undefined,
+        tags: Array.isArray(body.tags) ? body.tags.map((t: unknown) => String(t).trim()).filter(Boolean) : undefined,
+        collectionIds: typeof body.collectionId === "string" && body.collectionId ? [body.collectionId] : undefined,
         lyrics:
           typeof body.lyrics === "string"
             ? { lrc: body.lyrics }

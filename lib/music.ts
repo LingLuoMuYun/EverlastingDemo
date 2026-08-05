@@ -51,6 +51,7 @@ export interface ComposedTrack {
   tags?: string[];
   collectionIds?: string[];
   lyrics: MusicTrack["lyrics"];
+  addedAt?: string;
 }
 
 const CACHE_KEY = "music:library";
@@ -250,6 +251,7 @@ export function composeTrack(track: MusicTrack): ComposedTrack {
     tags: track.tags || [],
     collectionIds: track.collectionIds || [],
     lyrics: track.lyrics ?? null,
+    addedAt: track.addedAt,
   };
 }
 

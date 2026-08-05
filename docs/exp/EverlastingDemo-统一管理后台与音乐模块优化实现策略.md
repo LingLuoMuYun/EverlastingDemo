@@ -12,7 +12,7 @@
 >
 > **v2.0 更新说明（2026-08-05）**：应站主要求，将"editor / music 等后台入口分散"纳入设计——新增统一管理后台 `/admin`：`/admin` 为总览，`/admin/notes`（原 `/editor` 系列 301 迁移）、`/admin/music`（音乐曲库管理），二期可扩展友链/项目/相册/站点配置等模块；音乐曲库管理全部设计迁入 Admin 框架。
 >
-> **实施状态（2026-08-05）**：阶段 0-4 已全部落地并推送——P0 播放器修复、曲库数据层与 `/api/music/library`、统一管理后台 `/admin`（笔记+音乐）、播放器体验层（Media Session/快捷键/队列持久化/预加载/顺序播放）、收尾（音量调试面板、README/.env 更新、旧 `/api/music` 移除）。
+> **实施状态（2026-08-05）**：阶段 0-4 已全部落地并推送——P0 播放器修复、曲库数据层与 `/api/music/library`、统一管理后台 `/admin`（笔记+音乐）、播放器体验层（Media Session/快捷键/队列持久化/预加载/顺序播放）、收尾（音量调试面板、README/.env 更新、旧 `/api/music` 移除）；随后追加落地**歌单导入（A）**与**精细管理（B）**（见第十二章）。
 
 ---
 
@@ -648,6 +648,24 @@ audio.addEventListener("volumechange", () => console.log("volumechange", audio.v
 8. `/editor`、`/editor/new`、`/editor/[slug]` 均 301 到 `/admin/notes*`，笔记增删改不受影响；
 9. `npm run lint`、`npx tsc --noEmit` 通过；
 10. README 路由表与环境变量说明更新（含 `/admin` 入口）。
+
+---
+
+## 十二、歌单导入与精细管理（阶段 A/B，2026-08-05 落地）
+
+在阶段 0-4 基础上追加的能力：
+
+| 能力 | 实现 |
+|------|------|
+| 网易云歌单拉取 | `lib/netease.ts` 的 `fetchNeteasePlaylist`（旧版 `playlist/detail` 接口，游客可拿完整列表；v3 未登录只返回 10 首） |
+| 歌单预览 | `GET /api/music/netease/playlist/preview?id=`：歌单信息 + 前 100 首 + 库内重复标记，不写库 |
+| 歌单批量导入 | `POST /api/music/netease/playlist/import`：逐首抓歌词 + 按 `neteaseId` 去重 + 并发 4 防风控 + 导入报告（新增/跳过/失败），支持跳过已存在、导入上限、归属歌单、批量标签 |
+| 曲库 v2 | `library.json` 升级：`collections`（歌单分组）+ 曲目新增 `duration/tags/collectionIds`；`normalizeLibrary` 自动迁移 v1 数据 |
+| 歌单管理 | `POST/PUT/DELETE /api/music/collections`：增/改/排序/删（删除自动解除曲目归属） |
+| 精细管理 UI | `/admin/music`：搜索 / 来源 / 歌单 / 标签筛选、5 种排序、全选 + 批量（加入/移出歌单、设标签、删除）、歌单管理面板、编辑面板支持标签与歌单归属 |
+| 校验 | `scripts/validate-music.mjs` 升级 v2：歌单 / 标签 / 时长 / 归属引用校验 |
+
+写入类接口与既有规则一致：仅本地 dev、`EDITOR_TOKEN` 可选鉴权、保存后 `autopushMusic` 自动推 GitHub。
 
 ---
 
