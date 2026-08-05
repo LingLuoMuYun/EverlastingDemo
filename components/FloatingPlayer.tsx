@@ -3,12 +3,37 @@
 import { usePathname } from 'next/navigation';
 import { useMusic } from './MusicProvider';
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function FloatingPlayer() {
   const pathname = usePathname();
-  const { currentSong, isPlaying, togglePlay, nextSong, currentLyric, isLoading } = useMusic();
+  const { currentSong, isPlaying, togglePlay, nextSong, currentLyric, isLoading, volume, setVolume, isMuted } = useMusic();
   const [isMounted, setIsMounted] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const volumeRef = useRef(volume);
+  const setVolumeRef = useRef(setVolume);
+
+  useEffect(() => {
+    volumeRef.current = volume;
+  });
+
+  useEffect(() => {
+    setVolumeRef.current = setVolume;
+  });
+
+  // 滚轮调音量（原生监听，passive:false 阻止页面滚动）
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 0.05 : -0.05;
+      const next = Math.min(1, Math.max(0, Math.round((volumeRef.current + delta) * 100) / 100));
+      setVolumeRef.current(next);
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
 
   useEffect(() => {
     setIsMounted(true);
@@ -23,9 +48,11 @@ export default function FloatingPlayer() {
   return (
     <div className="fixed bottom-6 right-6 z-[9999]" style={{ pointerEvents: 'none' }}>
       <motion.div
+        ref={containerRef}
         drag
         dragMomentum={false} // 取消惯性
         style={{ touchAction: 'none' }}
+        title={`音量 ${Math.round((isMuted ? 0 : volume || 0) * 100)}%（滚轮可调）`}
         // 【核心魔法】：使用 framer-motion 平滑控制它的隐身与显现，并且动态控制点击穿透
         animate={{
           opacity: isHidden ? 0 : 1,

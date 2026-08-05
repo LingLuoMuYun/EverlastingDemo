@@ -13,7 +13,7 @@ interface ShortcutHandlers {
 
 /**
  * 全局键盘快捷键：
- * 空格=播放/暂停；←/→=快退/快进 5s；↑/↓=音量 ±0.05；M=静音；N/P=下一首/上一首
+ * 空格=播放/暂停；←/→=快退/快进 5s；↑/↓=音量 ±0.05（Shift+↑/↓=±0.01 微调）；+/−=音量 ±0.05；M=静音；N/P=下一首/上一首
  * 输入框/文本域/可编辑元素聚焦时自动忽略，避免打字误触
  */
 export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
@@ -44,9 +44,18 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
           break;
         case "ArrowUp":
           e.preventDefault();
-          h.onVolumeBy(0.05);
+          h.onVolumeBy(e.shiftKey ? 0.01 : 0.05);
           break;
         case "ArrowDown":
+          e.preventDefault();
+          h.onVolumeBy(e.shiftKey ? -0.01 : -0.05);
+          break;
+        case "+":
+        case "=":
+          e.preventDefault();
+          h.onVolumeBy(0.05);
+          break;
+        case "-":
           e.preventDefault();
           h.onVolumeBy(-0.05);
           break;

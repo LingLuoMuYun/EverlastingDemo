@@ -169,6 +169,11 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const errorHandledRef = useRef(false);
   const consecutiveFailRef = useRef(0);
   const restoreRef = useRef<number | null>(null);
+  const volumeSupportedRef = useRef(true);
+
+  useEffect(() => {
+    volumeSupportedRef.current = volumeSupported;
+  }, [volumeSupported]);
 
   // 🌟 开发模式调试句柄：DevTools 里直接查看播放器内部状态（音量/缓冲/错误/Media Session）
   useEffect(() => {
@@ -294,7 +299,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   // 🌟 状态持久化：音量 / 静音 / 播放模式
   useEffect(() => {
-    writeStored(STORAGE_KEYS.volume, String(volume));
+    // 保留两位小数，避免浮点误差累积
+    writeStored(STORAGE_KEYS.volume, String(Math.round(volume * 100) / 100));
   }, [volume]);
 
   useEffect(() => {
@@ -574,7 +580,11 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const el = audioRef.current;
     if (!el) return;
-    const sync = () => setVolumeState(el.volume);
+    const sync = () => {
+      // iOS 等平台 volume 只读（恒为 1），禁止回写覆盖用户记忆的音量
+      if (!volumeSupportedRef.current) return;
+      setVolumeState(Math.round(el.volume * 100) / 100);
+    };
     el.addEventListener('volumechange', sync);
     return () => el.removeEventListener('volumechange', sync);
   }, [currentSong?.id]);

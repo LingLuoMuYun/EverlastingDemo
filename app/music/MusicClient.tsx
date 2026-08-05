@@ -23,6 +23,31 @@ export default function MusicClient() {
   const [activeTab, setActiveTab] = useState<'lyrics' | 'playlist'>('lyrics');
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const volumeAreaRef = useRef<HTMLDivElement>(null);
+  const volumeRef = useRef(volume);
+  const setVolumeRef = useRef(setVolume);
+
+  useEffect(() => {
+    volumeRef.current = volume;
+  });
+
+  useEffect(() => {
+    setVolumeRef.current = setVolume;
+  });
+
+  // 滚轮调音量（原生监听，passive:false 才能阻止页面滚动）
+  useEffect(() => {
+    const el = volumeAreaRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 0.05 : -0.05;
+      const next = Math.min(1, Math.max(0, Math.round((volumeRef.current + delta) * 100) / 100));
+      setVolumeRef.current(next);
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
 
   const [parsedLyrics, setParsedLyrics] = useState<LyricLine[]>([]);
 
@@ -198,15 +223,16 @@ export default function MusicClient() {
                     </button>
                     <button onClick={nextSong} disabled={playMode === 'order' && currentIndex >= playlist.length - 1} className={`p-2 text-slate-700 dark:text-slate-300 hover:text-indigo-500 transition-transform hover:scale-110 ${playMode === 'order' && currentIndex >= playlist.length - 1 ? 'opacity-40 cursor-not-allowed hover:scale-100' : ''}`}><SkipForward size={24} className="md:w-7 md:h-7" fill="currentColor" /></button>
                   </div>
-                  <div className="flex items-center" onMouseLeave={() => setShowVolumeSlider(false)}>
+                  <div ref={volumeAreaRef} className="flex items-center" onMouseLeave={() => setShowVolumeSlider(false)}>
                     <AnimatePresence>
                       {showVolumeSlider && volumeSupported && (
-                        <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 80, opacity: 1 }} exit={{ width: 0, opacity: 0 }} className="flex overflow-hidden items-center mr-2 bg-white/30 dark:bg-black/20 backdrop-blur-md rounded-full px-3 py-1.5 border border-white/20">
-                          <input type="range" min="0" max="1" step="0.01" value={volume || 0} onChange={(e) => setVolume && setVolume(Number(e.target.value))} className="w-16 h-1 appearance-none rounded-full cursor-pointer touch-none" style={{ background: `linear-gradient(to right, #4f46e5 ${(volume || 0) * 100}%, rgba(0, 0, 0, 0.15) 0)` }} />
+                        <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 132, opacity: 1 }} exit={{ width: 0, opacity: 0 }} className="flex overflow-hidden items-center mr-2 bg-white/30 dark:bg-black/20 backdrop-blur-md rounded-full px-3 py-1.5 border border-white/20">
+                          <input type="range" min="0" max="1" step="0.01" value={volume || 0} onChange={(e) => setVolume && setVolume(Number(e.target.value))} className="w-20 h-1 appearance-none rounded-full cursor-pointer touch-none" style={{ background: `linear-gradient(to right, #4f46e5 ${(volume || 0) * 100}%, rgba(0, 0, 0, 0.15) 0)` }} />
+                          <span className="ml-2 w-8 text-right text-[10px] font-black text-indigo-500 dark:text-indigo-400 tabular-nums">{Math.round((isMuted ? 0 : volume || 0) * 100)}%</span>
                         </motion.div>
                       )}
                     </AnimatePresence>
-                    <button onClick={() => setShowVolumeSlider(!showVolumeSlider)} onDoubleClick={toggleMute} className={`p-2 rounded-full transition-all ${showVolumeSlider ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-500 hover:text-indigo-500'}`}>{isMuted || volume === 0 ? <VolumeX size={18} className="md:w-5 md:h-5"/> : <Volume2 size={18} className="md:w-5 md:h-5" />}</button>
+                    <button onClick={() => setShowVolumeSlider(!showVolumeSlider)} onDoubleClick={toggleMute} title={`音量 ${Math.round((isMuted ? 0 : volume || 0) * 100)}%（滚轮可调）`} className={`p-2 rounded-full transition-all ${showVolumeSlider ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-500 hover:text-indigo-500'}`}>{isMuted || volume === 0 ? <VolumeX size={18} className="md:w-5 md:h-5"/> : <Volume2 size={18} className="md:w-5 md:h-5" />}</button>
                   </div>
                 </div>
               </div>
