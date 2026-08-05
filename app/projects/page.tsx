@@ -1,7 +1,8 @@
 import Navbar from '../../components/Navbar';
 import PageTransition from '../../components/PageTransition';
 import ProjectsBoard from './ProjectsBoard';
-import {siteConfig} from "@/siteConfig";
+import { siteConfig } from "@/siteConfig";
+import { getPublicProjects } from "../../lib/projects";
 
 export const metadata = {
   title: "项目矩阵 | " + siteConfig.title,
@@ -9,12 +10,13 @@ export const metadata = {
 };
 
 export default function ProjectsPage() {
+  const projects = getPublicProjects();
   return (
     <div className="min-h-screen relative pb-20">
       <Navbar />
       <PageTransition>
         <div className="mt-28">
-          <ProjectsBoard />
+          <ProjectsBoard projects={projects} />
         </div>
       </PageTransition>
     </div>

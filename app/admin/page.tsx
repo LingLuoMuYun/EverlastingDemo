@@ -13,6 +13,8 @@ import { ADMIN_MODULES } from "../../lib/admin";
 import { getAllNotesMeta } from "../../lib/notes";
 import { getLibrary } from "../../lib/music";
 import { getPhotoLibrary } from "../../lib/photos";
+import { getProjects } from "../../lib/projects";
+import { getFriends } from "../../lib/friends";
 import { siteConfig } from "../../siteConfig";
 
 export const metadata = {
@@ -34,6 +36,8 @@ export default function AdminDashboardPage() {
     notes: getAllNotesMeta({ includeDraft: true }).length,
     music: getLibrary().tracks.length,
     photos: getPhotoLibrary().albums.reduce((n, a) => n + a.photos.length, 0),
+    projects: getProjects().projects.length,
+    friends: getFriends().friends.length,
   };
 
   return (
@@ -72,7 +76,7 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="mt-8 rounded-3xl bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border border-white/40 dark:border-white/10 p-5 md:p-6 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-        规划中模块：友链 / 项目 / 相册 / 站点配置（见导航灰显项）。新增后台模块只需在{" "}
+        规划中模块：站点配置（见导航灰显项）。新增后台模块只需在{" "}
         <code className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-700 font-mono">lib/admin.ts</code> 注册一行并新建页面。
       </div>
     </div>

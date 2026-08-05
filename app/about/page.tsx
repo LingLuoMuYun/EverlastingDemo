@@ -19,6 +19,7 @@ import Navbar from '../../components/Navbar';
 import PageTransition from '../../components/PageTransition';
 import AboutClient from '../../components/AboutClient';
 import { getAllNotesMeta } from '../../lib/notes';
+import { getPublicFriends } from '../../lib/friends';
 import { KIND_LABELS } from '../../lib/types';
 import { Suspense } from 'react';
 
@@ -208,6 +209,7 @@ export default async function AboutPage() {
               contentHtml={contentHtml}
               coverImage={coverImage}
               activities={allActivities}
+              friends={getPublicFriends()}
             />
           </Suspense>
         </main>

@@ -93,3 +93,13 @@ export function autopushMusic(message: string): Promise<PushResult> {
 export function autopushPhotos(message: string): Promise<PushResult> {
   return autopush(["data/photos", "public/uploads/photos"], message);
 }
+
+/** 项目管理后台：只提交 data/projects */
+export function autopushProjects(message: string): Promise<PushResult> {
+  return autopush(["data/projects"], message);
+}
+
+/** 友链管理后台：只提交 data/friends */
+export function autopushFriends(message: string): Promise<PushResult> {
+  return autopush(["data/friends"], message);
+}

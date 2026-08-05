@@ -19,11 +19,21 @@ type ActivityRecord = {
 export default function AboutClient({
   contentHtml,
   coverImage,
-  activities
+  activities,
+  friends
 }: {
   contentHtml: string,
   coverImage: string,
-  activities: ActivityRecord[]
+  activities: ActivityRecord[],
+  friends: {
+    id: string;
+    name: string;
+    url: string;
+    description: string;
+    avatar: string;
+    themeColor: string;
+    status?: "online" | "offline";
+  }[]
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -362,7 +372,7 @@ export default function AboutClient({
 
           {activeTab === 'friends' && (
             <motion.div key="friends" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }}>
-              <FriendsBoard />
+              <FriendsBoard friends={friends} />
             </motion.div>
           )}
         </AnimatePresence>

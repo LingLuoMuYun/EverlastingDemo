@@ -41,8 +41,7 @@ export const ADMIN_MODULES: AdminModule[] = [
     href: "/admin/friends",
     icon: "Link",
     description: "友链数据维护",
-    stage: 2,
-    disabled: true,
+    stage: 1,
   },
   {
     key: "projects",
@@ -50,8 +49,7 @@ export const ADMIN_MODULES: AdminModule[] = [
     href: "/admin/projects",
     icon: "FolderKanban",
     description: "项目数据维护",
-    stage: 2,
-    disabled: true,
+    stage: 1,
   },
   {
     key: "photos",

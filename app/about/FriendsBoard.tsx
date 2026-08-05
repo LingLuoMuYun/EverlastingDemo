@@ -2,8 +2,17 @@
 
 import { useState } from 'react';
 import { motion, type Variants } from 'framer-motion';
-import { friendsData } from '../../data/friends';
 import { siteConfig } from '../../siteConfig';
+
+type Friend = {
+  id: string;
+  name: string;
+  url: string;
+  description: string;
+  avatar: string;
+  themeColor: string;
+  status?: 'online' | 'offline';
+};
 
 // Framer Motion 动画变体：交错子元素
 const containerVariants: Variants = {
@@ -19,7 +28,7 @@ const itemVariants: Variants = {
   show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 300, damping: 24 } }
 };
 
-export default function FriendsBoard() {
+export default function FriendsBoard({ friends }: { friends: Friend[] }) {
   // 控制复制按钮的状态
   const [isCopied, setIsCopied] = useState(false);
 
@@ -51,7 +60,7 @@ export default function FriendsBoard() {
         animate="show"
         className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6"
       >
-        {friendsData.map((friend) => (
+        {friends.map((friend) => (
           <motion.div key={friend.id} variants={itemVariants} className="h-full">
             <a
               href={friend.url}
@@ -68,16 +77,35 @@ export default function FriendsBoard() {
               <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-5 relative z-10 mb-2 md:mb-4">
 
                 <div className="w-10 h-10 md:w-16 md:h-16 rounded-full p-[2px] md:p-1 bg-gradient-to-tr from-indigo-500/50 to-purple-500/50 shadow-sm md:shadow-md group-hover:rotate-[360deg] transition-transform duration-1000 ease-in-out flex-shrink-0">
-                  <img src={friend.avatar} alt={friend.name} className="w-full h-full rounded-full object-cover bg-white" />
+                  {friend.avatar ? (
+                    <img src={friend.avatar} alt={friend.name} referrerPolicy="no-referrer" className="w-full h-full rounded-full object-cover bg-white" />
+                  ) : (
+                    <div
+                      className="w-full h-full rounded-full flex items-center justify-center text-white font-black text-sm md:text-xl"
+                      style={{ backgroundColor: friend.themeColor || '#6366f1' }}
+                    >
+                      {(friend.name.trim().charAt(0) || '友').toUpperCase()}
+                    </div>
+                  )}
                 </div>
 
-                <div className="flex-1 overflow-hidden w-full">
-                  <h3 className="text-sm md:text-xl font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
+                <div className="flex-1 min-w-0 w-full">
+                  <h3 className="text-sm md:text-xl font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors leading-snug break-words">
                     {friend.name}
                   </h3>
-                  <div className="text-[9px] md:text-xs font-bold text-indigo-500/70 dark:text-indigo-400/70 tracking-widest uppercase mt-0.5 md:mt-1 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-indigo-500 animate-pulse"></span>
-                    Online
+                  <div
+                    className={`text-[9px] md:text-xs font-bold tracking-widest uppercase mt-0.5 md:mt-1 flex items-center gap-1 ${
+                      friend.status === 'offline'
+                        ? 'text-slate-400/70 dark:text-slate-500/70'
+                        : 'text-indigo-500/70 dark:text-indigo-400/70'
+                    }`}
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${
+                        friend.status === 'offline' ? 'bg-slate-400' : 'bg-indigo-500 animate-pulse'
+                      }`}
+                    ></span>
+                    {friend.status === 'offline' ? 'Offline' : 'Online'}
                   </div>
                 </div>
               </div>
