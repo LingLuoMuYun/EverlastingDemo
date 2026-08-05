@@ -166,6 +166,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const failCountRef = useRef<Record<string, number>>({});
+  const errorHandledRef = useRef(false);
+  const consecutiveFailRef = useRef(0);
   const restoreRef = useRef<number | null>(null);
 
   // 🌟 开发模式调试句柄：DevTools 里直接查看播放器内部状态（音量/缓冲/错误/Media Session）
@@ -282,45 +284,6 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     return () => { isMounted = false; };
   }, []);
 
-  useEffect(() => {
-    if (playlist.length === 0) return;
-    let isMounted = true;
-    const currentSong = playlist[currentIndex];
-    setLyrics([]);
-    setCurrentLyric("♪ 正在缓冲 ♪");
-    setIsWaiting(false);
-    if (Array.isArray(currentSong.lyrics) && currentSong.lyrics.length > 0) {
-      if (isMounted) {
-        setLyrics(currentSong.lyrics);
-        setCurrentLyric(currentSong.lyrics[0]?.text || "\u266a \u7eaf\u4eab\u97f3\u4e50 \u266a");
-      }
-    } else if (currentSong.lrcUrl) {
-      fetch(currentSong.lrcUrl)
-        .then(res => res.text())
-        .then(text => {
-          if (isMounted) {
-             const parsed = parseLrc(text);
-             setLyrics(parsed);
-             setPlaylist(prev => {
-                const newPlaylist = [...prev];
-                newPlaylist[currentIndex].lyrics = parsed;
-                return newPlaylist;
-             });
-          }
-        })
-        .catch(() => { if (isMounted) setCurrentLyric("\u266a \u7eaf\u4eab\u97f3\u4e50 \u266a"); });
-    }
-
-    if (isPlaying && audioRef.current) {
-      const playPromise = audioRef.current.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(() => setIsPlaying(false));
-      }
-    }
-    return () => { isMounted = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 故意只依赖 currentIndex 与长度，避免 playlist 更新触发无限循环
-  }, [currentIndex, playlist.length]); // 移除 playlist 依赖防止无限循环，只依赖长度
-
   // 🌟 4. 同步音量和静音到 audio 元素（volume 保留"记忆音量"，静音走 muted 属性）
   useEffect(() => {
     if (audioRef.current) {
@@ -369,8 +332,9 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   // 🌟 5. 重写 nextSong，加入对随机模式的处理
   const nextSong = () => {
-    if (playMode === 'random') {
-      setCurrentIndex(Math.floor(Math.random() * playlist.length));
+    if (playMode === 'random' && playlist.length > 1) {
+      const next = Math.floor(Math.random() * playlist.length);
+      setCurrentIndex(next === currentIndex ? (next + 1) % playlist.length : next);
     } else if (playMode === 'order') {
       setCurrentIndex((prev) => (prev + 1 < playlist.length ? prev + 1 : prev));
     } else {
@@ -379,8 +343,9 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   };
 
   const prevSong = () => {
-    if (playMode === 'random') {
-      setCurrentIndex(Math.floor(Math.random() * playlist.length));
+    if (playMode === 'random' && playlist.length > 1) {
+      const next = Math.floor(Math.random() * playlist.length);
+      setCurrentIndex(next === currentIndex ? (next - 1 + playlist.length) % playlist.length : next);
     } else if (playMode === 'order') {
       setCurrentIndex((prev) => Math.max(0, prev - 1));
     } else {
@@ -419,7 +384,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const handleEnded = () => {
     if (playMode === 'single' && audioRef.current) {
        audioRef.current.currentTime = 0;
-       audioRef.current.play();
+       audioRef.current.play().catch(() => handleError());
     } else if (playMode === 'order' && currentIndex >= playlist.length - 1) {
        setIsPlaying(false); // 顺序播完即停
     } else {
@@ -445,6 +410,9 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   // 🌟 8. 播放失败兜底：连续失败上限 3 次，否则自动跳歌并提示
   const handleError = () => {
+    // play() 被拒与 error 事件可能双触发，同一首歌只处理一次
+    if (errorHandledRef.current) return;
+    errorHandledRef.current = true;
     if (!currentSong) return;
     const id = String(currentSong.id);
     const count = (failCountRef.current[id] || 0) + 1;
@@ -455,18 +423,67 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       showToast("这首歌暂时无法播放，已停止自动跳转", "error");
       return;
     }
+    // 歌单里坏歌过多时防止无限跳歌
+    consecutiveFailRef.current += 1;
+    if (consecutiveFailRef.current >= 8) {
+      setIsPlaying(false);
+      setCurrentLyric("连续多首无法播放，已停止自动跳转");
+      showToast("连续多首无法播放，已停止自动跳转", "error");
+      return;
+    }
     setCurrentLyric("播放失败，自动跳到下一首...");
     showToast("播放失败，已自动跳到下一首", "warning");
+    setIsPlaying(true); // 保持播放态，确保跳歌后链式播放继续（坏源不再打断整条自动播放）
     nextSong();
   };
 
   // 成功播放/可播放时清除该曲失败计数
   const handlePlaying = () => {
     setIsWaiting(false);
+    errorHandledRef.current = false;
+    consecutiveFailRef.current = 0;
     if (currentSong) failCountRef.current[String(currentSong.id)] = 0;
   };
 
   const handleWaiting = () => setIsWaiting(true);
+
+  // 切换歌曲：重置歌词/缓冲并自动开始播放；失败交给 handleError 自动跳歌（不置 isPlaying=false）
+  useEffect(() => {
+    if (playlist.length === 0) return;
+    let isMounted = true;
+    errorHandledRef.current = false;
+    const currentSong = playlist[currentIndex];
+    setLyrics([]);
+    setCurrentLyric("♪ 正在缓冲 ♪");
+    setIsWaiting(false);
+    if (Array.isArray(currentSong.lyrics) && currentSong.lyrics.length > 0) {
+      if (isMounted) {
+        setLyrics(currentSong.lyrics);
+        setCurrentLyric(currentSong.lyrics[0]?.text || "\u266a \u7eaf\u4eab\u97f3\u4e50 \u266a");
+      }
+    } else if (currentSong.lrcUrl) {
+      fetch(currentSong.lrcUrl)
+        .then(res => res.text())
+        .then(text => {
+          if (isMounted) {
+             const parsed = parseLrc(text);
+             setLyrics(parsed);
+             setPlaylist(prev => {
+                const newPlaylist = [...prev];
+                newPlaylist[currentIndex].lyrics = parsed;
+                return newPlaylist;
+             });
+          }
+        })
+        .catch(() => { if (isMounted) setCurrentLyric("\u266a \u7eaf\u4eab\u97f3\u4e50 \u266a"); });
+    }
+
+    if (isPlaying && audioRef.current) {
+      audioRef.current.play().catch(() => handleError());
+    }
+    return () => { isMounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 故意只依赖 currentIndex 与长度，避免 playlist 更新触发无限循环
+  }, [currentIndex, playlist.length]);
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newProgress = Number(e.target.value);
