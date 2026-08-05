@@ -12,7 +12,7 @@ const formatTime = (time: number) => {
 };
 
 export default function CloudPlayer() {
-  const { playlist, currentSong, isPlaying, progress, currentTime, duration, currentLyric, isLoading, togglePlay, nextSong, prevSong, handleSeek } = useMusic();
+  const { playlist, currentSong, isPlaying, progress, currentTime, duration, buffered, currentLyric, isLoading, togglePlay, nextSong, prevSong, handleSeek } = useMusic();
   const [displayedLyric, setDisplayedLyric] = useState("");
   // 🌟 初始化路由
   const router = useRouter();
@@ -135,7 +135,7 @@ export default function CloudPlayer() {
               value={progress}
               onChange={safeHandleSeek}
               className="flex-1 h-1.5 bg-white/40 dark:bg-slate-700/50 rounded-full appearance-none outline-none cursor-pointer shadow-inner"
-              style={{ background: `linear-gradient(to right, #818cf8 ${progress}%, rgba(148,163,184,0.4) ${progress}%)` }}
+              style={{ background: `linear-gradient(to right, #818cf8 0%, #818cf8 ${progress}%, rgba(129,140,248,0.4) ${progress}%, rgba(129,140,248,0.4) ${Math.max(progress, buffered)}%, rgba(148,163,184,0.4) ${Math.max(progress, buffered)}%)` }}
             />
             <span className="w-10">{formatTime(duration)}</span>
           </div>

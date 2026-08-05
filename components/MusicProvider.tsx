@@ -3,12 +3,15 @@
 import { createContext, useContext, useState, useRef, useEffect, ReactNode } from 'react';
 import { siteConfig } from '../siteConfig';
 import { useToast } from './ToastProvider';
+import { useMediaSession } from './useMediaSession';
+import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 
 // 【状态持久化】音量 / 静音 / 播放模式记忆到 localStorage
 const STORAGE_KEYS = {
   volume: 'everlasting-music-volume',
   muted: 'everlasting-music-muted',
   playMode: 'everlasting-music-playmode',
+  queueState: 'everlasting-music-state',
 } as const;
 
 export interface LyricLine {
@@ -24,6 +27,7 @@ export interface Song {
   src: string;
   lrcUrl: string | null;
   lyrics: LyricLine[] | string;
+  album?: string;
   name?: string;
   author?: string;
   pic?: string;
@@ -96,7 +100,7 @@ function parseLrc(lrcText: string): LyricLine[] {
 }
 
 // 🌟 1. 扩充 Context 类型，加入 MusicPage 需要的所有属性
-type PlayMode = 'loop' | 'single' | 'random';
+type PlayMode = 'loop' | 'single' | 'random' | 'order';
 
 interface MusicContextType {
   playlist: Song[];
@@ -106,6 +110,7 @@ interface MusicContextType {
   progress: number;
   currentTime: number;
   duration: number;
+  buffered: number;
   currentLyric: string;
   isLoading: boolean;
   isWaiting: boolean;
@@ -134,6 +139,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [buffered, setBuffered] = useState(0);
   const [lyrics, setLyrics] = useState<{ time: number; text: string }[]>([]);
   const [currentLyric, setCurrentLyric] = useState("正在连接高可用神经云端...");
   const [isLoading, setIsLoading] = useState(true);
@@ -148,11 +154,12 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const [isMuted, setIsMuted] = useState<boolean>(() => readStored(STORAGE_KEYS.muted) === '1');
   const [playMode, setPlayMode] = useState<PlayMode>(() => {
     const stored = readStored(STORAGE_KEYS.playMode);
-    return stored === 'single' || stored === 'random' ? stored : 'loop';
+    return stored === 'single' || stored === 'random' || stored === 'order' ? stored : 'loop';
   });
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const failCountRef = useRef<Record<string, number>>({});
+  const restoreRef = useRef<number | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -172,8 +179,34 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
     const applyPlaylist = (songs: Song[]) => {
       if (!isMounted) return;
-      if (songs.length > 0) setPlaylist(songs);
-      else setCurrentLyric("正在为你寻找绝世好歌");
+      if (songs.length > 0) {
+        // 尝试恢复上次播放位置（曲库 id 顺序一致才恢复，曲库改过则丢弃）
+        try {
+          const stored = JSON.parse(readStored(STORAGE_KEYS.queueState) || "null") as {
+            playlistIds?: string[];
+            index?: number;
+            currentTime?: number;
+          } | null;
+          if (
+            stored &&
+            Array.isArray(stored.playlistIds) &&
+            stored.playlistIds.length === songs.length &&
+            stored.playlistIds.every((id, i) => id === String(songs[i].id))
+          ) {
+            const idx = Math.min(Math.max(0, Number(stored.index) || 0), songs.length - 1);
+            setCurrentIndex(idx);
+            const storedTime = Number(stored.currentTime);
+            if (Number.isFinite(storedTime) && storedTime > 0.5) {
+              restoreRef.current = storedTime;
+            }
+          }
+        } catch {
+          /* 恢复失败不影响播放 */
+        }
+        setPlaylist(songs);
+      } else {
+        setCurrentLyric("正在为你寻找绝世好歌");
+      }
       setIsLoading(false);
     };
 
@@ -262,6 +295,23 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     writeStored(STORAGE_KEYS.playMode, playMode);
   }, [playMode]);
 
+  // 🌟 播放队列持久化：刷新后恢复 index 与进度（2s 防抖）
+  useEffect(() => {
+    if (playlist.length === 0) return;
+    const timer = setTimeout(() => {
+      writeStored(
+        STORAGE_KEYS.queueState,
+        JSON.stringify({
+          playlistIds: playlist.map((s) => String(s.id)),
+          index: currentIndex,
+          currentTime,
+          updatedAt: Date.now(),
+        })
+      );
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [playlist, currentIndex, currentTime]);
+
   const togglePlay = () => {
     if (audioRef.current) {
       if (isPlaying) audioRef.current.pause();
@@ -274,6 +324,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const nextSong = () => {
     if (playMode === 'random') {
       setCurrentIndex(Math.floor(Math.random() * playlist.length));
+    } else if (playMode === 'order') {
+      setCurrentIndex((prev) => (prev + 1 < playlist.length ? prev + 1 : prev));
     } else {
       setCurrentIndex((prev) => (prev + 1) % playlist.length);
     }
@@ -282,6 +334,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const prevSong = () => {
     if (playMode === 'random') {
       setCurrentIndex(Math.floor(Math.random() * playlist.length));
+    } else if (playMode === 'order') {
+      setCurrentIndex((prev) => Math.max(0, prev - 1));
     } else {
       setCurrentIndex((prev) => (prev - 1 + playlist.length) % playlist.length);
     }
@@ -295,10 +349,15 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   const handleTimeUpdate = () => {
     if (audioRef.current) {
-      const { currentTime, duration } = audioRef.current;
+      const el = audioRef.current;
+      const { currentTime, duration } = el;
       setCurrentTime(currentTime);
       setDuration(duration || 0);
       setProgress((currentTime / (duration || 1)) * 100);
+      if (el.buffered.length > 0) {
+        const end = el.buffered.end(el.buffered.length - 1);
+        setBuffered(duration ? Math.min(100, (end / duration) * 100) : 0);
+      }
 
       if (lyrics.length > 0) {
         const activeLyric = lyrics.slice().reverse().find(l => currentTime >= l.time);
@@ -314,8 +373,26 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     if (playMode === 'single' && audioRef.current) {
        audioRef.current.currentTime = 0;
        audioRef.current.play();
+    } else if (playMode === 'order' && currentIndex >= playlist.length - 1) {
+       setIsPlaying(false); // 顺序播完即停
     } else {
        nextSong();
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    handleTimeUpdate();
+    if (audioRef.current && restoreRef.current !== null) {
+      const target = restoreRef.current;
+      restoreRef.current = null;
+      const duration = audioRef.current.duration || 0;
+      if (duration === 0 || target < duration) {
+        try {
+          audioRef.current.currentTime = target;
+        } catch {
+          /* 忽略 */
+        }
+      }
     }
   };
 
@@ -365,11 +442,69 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     setPlayMode(prev => {
       if (prev === 'loop') return 'single';
       if (prev === 'single') return 'random';
+      if (prev === 'random') return 'order';
       return 'loop';
     });
   };
 
   const currentSong = playlist[currentIndex];
+
+  // 🌟 预加载下一首（非随机模式），切歌更流畅
+  useEffect(() => {
+    if (!isPlaying || playlist.length < 2 || playMode === 'random') return;
+    const nextIdx =
+      playMode === 'order'
+        ? currentIndex + 1 < playlist.length
+          ? currentIndex + 1
+          : -1
+        : (currentIndex + 1) % playlist.length;
+    if (nextIdx < 0) return;
+    const next = playlist[nextIdx];
+    if (!next || next.src === currentSong?.src) return;
+    const preloadEl = new Audio();
+    preloadEl.preload = "metadata";
+    preloadEl.src = next.src;
+    return () => {
+      preloadEl.removeAttribute("src");
+      preloadEl.load();
+    };
+  }, [isPlaying, currentIndex, playlist, playMode, currentSong?.src]);
+
+  const seekTo = (time: number) => {
+    const el = audioRef.current;
+    if (!el) return;
+    const duration = el.duration || 0;
+    const clamped = duration > 0 ? Math.max(0, Math.min(time, duration)) : Math.max(0, time);
+    try {
+      el.currentTime = clamped;
+    } catch {
+      /* 忽略 */
+    }
+    setCurrentTime(clamped);
+    if (duration > 0) setProgress((clamped / duration) * 100);
+  };
+
+  const stopPlayback = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    setIsPlaying(false);
+  };
+
+  // 🌟 9. 系统媒体键（Media Session）与键盘快捷键
+  useMediaSession(
+    { onTogglePlay: togglePlay, onNext: nextSong, onPrev: prevSong, onSeekTo: seekTo, onStop: stopPlayback },
+    { currentSong, isPlaying, currentTime, duration }
+  );
+  useKeyboardShortcuts({
+    onTogglePlay: togglePlay,
+    onNext: nextSong,
+    onPrev: prevSong,
+    onSeekBy: (delta) => seekTo(currentTime + delta),
+    onVolumeBy: (delta) => setVolume(volume + delta),
+    onToggleMute: toggleMute,
+  });
 
   // 🌟 4.1 监听原生 volumechange，回写 state，防止 UI 与 audio 状态失步
   useEffect(() => {
@@ -393,7 +528,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   return (
     <MusicContext.Provider value={{
-        playlist, currentIndex, currentSong, isPlaying, progress, currentTime, duration, currentLyric, isLoading,
+        playlist, currentIndex, currentSong, isPlaying, progress, currentTime, duration, buffered, currentLyric, isLoading,
         isWaiting, volumeSupported,
         volume, isMuted, playMode, // 暴露新状态
         togglePlay, nextSong, prevSong, handleSeek,
@@ -410,7 +545,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
           onPlaying={handlePlaying}
           onCanPlay={handlePlaying}
           onError={handleError}
-          onLoadedMetadata={handleTimeUpdate}
+          onProgress={handleTimeUpdate}
+          onLoadedMetadata={handleLoadedMetadata}
         />
       )}
     </MusicContext.Provider>

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useMemo, useState, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, SkipBack, SkipForward, Repeat, Shuffle, RefreshCcw, Disc3, Volume2, VolumeX, Search, X } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Repeat, Shuffle, ListOrdered, RefreshCcw, Disc3, Volume2, VolumeX, Search, X } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import PageTransition from '../../components/PageTransition';
 import { useMusic } from '../../components/MusicProvider';
@@ -10,8 +10,9 @@ import type { Song, LyricLine } from '../../components/MusicProvider';
 
 export default function MusicClient() {
   const {
-    playlist, currentSong, isPlaying, progress, currentTime, duration, currentLyric,
+    playlist, currentSong, isPlaying, progress, currentTime, duration, buffered, currentLyric,
     isLoading, isWaiting, volumeSupported, togglePlay, nextSong, prevSong, handleSeek,
+    currentIndex,
     playSong,
     playMode, togglePlayMode,
     volume, setVolume, isMuted, toggleMute
@@ -98,6 +99,7 @@ export default function MusicClient() {
       case 'loop': return <Repeat size={18} className="text-slate-500 hover:text-indigo-500 md:w-5 md:h-5" />;
       case 'single': return <RefreshCcw size={18} className="text-indigo-500 md:w-5 md:h-5" />;
       case 'random': return <Shuffle size={18} className="text-slate-500 hover:text-indigo-500 md:w-5 md:h-5" />;
+      case 'order': return <ListOrdered size={18} className="text-slate-500 hover:text-indigo-500 md:w-5 md:h-5" />;
       default: return <Repeat size={18} className="text-slate-500 md:w-5 md:h-5" />;
     }
   };
@@ -182,7 +184,7 @@ export default function MusicClient() {
 
               <div className="w-full mt-auto relative z-20">
                 <div className="w-full flex flex-col gap-1.5 mb-6 md:mb-8 px-1 md:px-3">
-                  <input type="range" min="0" max="100" value={progress || 0} onChange={handleSeek} className="w-full h-1 md:h-1.5 rounded-full appearance-none cursor-pointer" style={{ background: `linear-gradient(to right, #4f46e5 ${progress}%, rgba(0, 0, 0, 0.15) 0)` }} />
+                  <input type="range" min="0" max="100" value={progress || 0} onChange={handleSeek} className="w-full h-1 md:h-1.5 rounded-full appearance-none cursor-pointer" style={{ background: `linear-gradient(to right, #4f46e5 0%, #4f46e5 ${progress}%, rgba(99,102,241,0.35) ${progress}%, rgba(99,102,241,0.35) ${Math.max(progress, buffered)}%, rgba(0, 0, 0, 0.15) ${Math.max(progress, buffered)}%)` }} />
                   <div className="flex justify-between text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 tabular-nums"><span>{formatTime(currentTime)}</span><span>{formatTime(duration)}</span></div>
                 </div>
                 <div className="w-full flex items-center justify-between px-1 md:px-2 lg:px-4">
@@ -194,7 +196,7 @@ export default function MusicClient() {
                         <span className="w-7 h-7 md:w-8 md:h-8 border-[3px] border-white/80 border-t-transparent rounded-full animate-spin" />
                       ) : isPlaying ? <Pause size={28} className="md:w-8 md:h-8" fill="currentColor" /> : <Play size={28} className="md:w-8 md:h-8 ml-1" fill="currentColor" />}
                     </button>
-                    <button onClick={nextSong} className="p-2 text-slate-700 dark:text-slate-300 hover:text-indigo-500 transition-transform hover:scale-110"><SkipForward size={24} className="md:w-7 md:h-7" fill="currentColor" /></button>
+                    <button onClick={nextSong} disabled={playMode === 'order' && currentIndex >= playlist.length - 1} className={`p-2 text-slate-700 dark:text-slate-300 hover:text-indigo-500 transition-transform hover:scale-110 ${playMode === 'order' && currentIndex >= playlist.length - 1 ? 'opacity-40 cursor-not-allowed hover:scale-100' : ''}`}><SkipForward size={24} className="md:w-7 md:h-7" fill="currentColor" /></button>
                   </div>
                   <div className="flex items-center" onMouseLeave={() => setShowVolumeSlider(false)}>
                     <AnimatePresence>
