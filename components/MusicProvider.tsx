@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useRef, useEffect, ReactNode } from 'react';
 import { siteConfig } from '../siteConfig';
+import { useToast } from './ToastProvider';
 
 // 【状态持久化】音量 / 静音 / 播放模式记忆到 localStorage
 const STORAGE_KEYS = {
@@ -104,6 +105,8 @@ interface MusicContextType {
   duration: number;
   currentLyric: string;
   isLoading: boolean;
+  isWaiting: boolean;
+  volumeSupported: boolean;
   volume: number;
   isMuted: boolean;
   playMode: PlayMode;
@@ -121,6 +124,7 @@ interface MusicContextType {
 const MusicContext = createContext<MusicContextType | null>(null);
 
 export function MusicProvider({ children }: { children: ReactNode }) {
+  const { showToast } = useToast();
   const [playlist, setPlaylist] = useState<Song[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -130,6 +134,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const [lyrics, setLyrics] = useState<{ time: number; text: string }[]>([]);
   const [currentLyric, setCurrentLyric] = useState("正在连接高可用神经云端...");
   const [isLoading, setIsLoading] = useState(true);
+  const [isWaiting, setIsWaiting] = useState(false);
+  const [volumeSupported, setVolumeSupported] = useState(true);
 
   // 🌟 2. 新增音量和播放模式状态（从 localStorage 恢复）
   const [volume, setVolumeState] = useState<number>(() => {
@@ -143,6 +149,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   });
 
   const audioRef = useRef<HTMLAudioElement>(null);
+  const failCountRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
     let isMounted = true;
@@ -185,6 +192,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     const currentSong = playlist[currentIndex];
     setLyrics([]);
     setCurrentLyric("♪ 正在缓冲 ♪");
+    setIsWaiting(false);
     if (Array.isArray(currentSong.lyrics) && currentSong.lyrics.length > 0) {
       if (isMounted) {
         setLyrics(currentSong.lyrics);
@@ -217,10 +225,11 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 故意只依赖 currentIndex 与长度，避免 playlist 更新触发无限循环
   }, [currentIndex, playlist.length]); // 移除 playlist 依赖防止无限循环，只依赖长度
 
-  // 🌟 4. 同步音量到 audio 元素
+  // 🌟 4. 同步音量和静音到 audio 元素（volume 保留"记忆音量"，静音走 muted 属性）
   useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.volume = isMuted ? 0 : volume;
+      audioRef.current.muted = isMuted;
+      audioRef.current.volume = volume;
     }
   }, [volume, isMuted]);
 
@@ -294,6 +303,31 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // 🌟 8. 播放失败兜底：连续失败上限 3 次，否则自动跳歌并提示
+  const handleError = () => {
+    if (!currentSong) return;
+    const id = String(currentSong.id);
+    const count = (failCountRef.current[id] || 0) + 1;
+    failCountRef.current[id] = count;
+    if (count >= 3) {
+      setIsPlaying(false);
+      setCurrentLyric("这首歌暂时无法播放，已停止自动跳转");
+      showToast("这首歌暂时无法播放，已停止自动跳转", "error");
+      return;
+    }
+    setCurrentLyric("播放失败，自动跳到下一首...");
+    showToast("播放失败，已自动跳到下一首", "warning");
+    nextSong();
+  };
+
+  // 成功播放/可播放时清除该曲失败计数
+  const handlePlaying = () => {
+    setIsWaiting(false);
+    if (currentSong) failCountRef.current[String(currentSong.id)] = 0;
+  };
+
+  const handleWaiting = () => setIsWaiting(true);
+
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newProgress = Number(e.target.value);
     setProgress(newProgress);
@@ -303,8 +337,10 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   };
 
   const setVolume = (val: number) => {
-    setVolumeState(val);
-    if (isMuted && val > 0) setIsMuted(false);
+    const clamped = Math.min(1, Math.max(0, val));
+    setVolumeState(clamped);
+    if (clamped > 0 && isMuted) setIsMuted(false);
+    if (clamped === 0 && !isMuted) setIsMuted(true);
   };
 
   const toggleMute = () => setIsMuted(!isMuted);
@@ -319,9 +355,30 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   const currentSong = playlist[currentIndex];
 
+  // 🌟 4.1 监听原生 volumechange，回写 state，防止 UI 与 audio 状态失步
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    const sync = () => setVolumeState(el.volume);
+    el.addEventListener('volumechange', sync);
+    return () => el.removeEventListener('volumechange', sync);
+  }, [currentSong?.id]);
+
+  // 🌟 4.2 iOS Safari 等平台禁止 JS 修改 volume，做特性检测供 UI 降级
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    const prev = el.volume;
+    el.volume = 0.3;
+    const supported = Math.abs(el.volume - 0.3) < 0.001;
+    setVolumeSupported(supported);
+    el.volume = prev;
+  }, [currentSong?.id]);
+
   return (
     <MusicContext.Provider value={{
         playlist, currentIndex, currentSong, isPlaying, progress, currentTime, duration, currentLyric, isLoading,
+        isWaiting, volumeSupported,
         volume, isMuted, playMode, // 暴露新状态
         togglePlay, nextSong, prevSong, handleSeek,
         playSong, setVolume, toggleMute, togglePlayMode // 暴露新方法
@@ -333,6 +390,10 @@ export function MusicProvider({ children }: { children: ReactNode }) {
           src={currentSong.src}
           onTimeUpdate={handleTimeUpdate}
           onEnded={handleEnded} // 使用我们重写的结束处理
+          onWaiting={handleWaiting}
+          onPlaying={handlePlaying}
+          onCanPlay={handlePlaying}
+          onError={handleError}
           onLoadedMetadata={handleTimeUpdate}
         />
       )}

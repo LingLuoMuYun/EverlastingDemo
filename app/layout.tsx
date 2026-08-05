@@ -4,6 +4,7 @@ import { Geist, Geist_Mono, Noto_Serif_SC } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "../components/ThemeProvider";
 import { MusicProvider } from "../components/MusicProvider";
+import { ToastProvider } from "../components/ToastProvider";
 import FloatingPlayer from "../components/FloatingPlayer";
 import { siteConfig } from "../siteConfig";
 import BackgroundSlider from "../components/BackgroundSlider";
@@ -62,6 +63,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
 
           <SplashScreen />
 
+          <ToastProvider>
           <MusicProvider>
           <div id="app-mount-root" className="flex-1 flex flex-col transition-opacity duration-1000">
             <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden">
@@ -103,6 +105,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             }
           `}} />
           </MusicProvider>
+          </ToastProvider>
 
         </ThemeProvider>
       </body>
