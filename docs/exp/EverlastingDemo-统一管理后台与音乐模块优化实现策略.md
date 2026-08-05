@@ -12,7 +12,7 @@
 >
 > **v2.0 更新说明（2026-08-05）**：应站主要求，将"editor / music 等后台入口分散"纳入设计——新增统一管理后台 `/admin`：`/admin` 为总览，`/admin/notes`（原 `/editor` 系列 301 迁移）、`/admin/music`（音乐曲库管理），二期可扩展友链/项目/相册/站点配置等模块；音乐曲库管理全部设计迁入 Admin 框架。
 >
-> **实施状态（2026-08-05）**：阶段 0-4 已全部落地并推送——P0 播放器修复、曲库数据层与 `/api/music/library`、统一管理后台 `/admin`（笔记+音乐）、播放器体验层（Media Session/快捷键/队列持久化/预加载/顺序播放）、收尾（音量调试面板、README/.env 更新、旧 `/api/music` 移除）；随后追加落地**歌单导入（A）**与**精细管理（B）**（见第十二章）。
+> **实施状态（2026-08-05）**：阶段 0-4 已全部落地并推送——P0 播放器修复、曲库数据层与 `/api/music/library`、统一管理后台 `/admin`（笔记+音乐）、播放器体验层（Media Session/快捷键/队列持久化/预加载/顺序播放）、收尾（音量调试面板、README/.env 更新、旧 `/api/music` 移除）；随后追加落地**歌单导入（A）**与**精细管理（B）**（见第十二章）；照片墙方案已确认，**阶段 A（数据层+API）已落地**，阶段 B（管理后台）/ C（前台接入）规划中（见第十三章）。
 
 ---
 
@@ -666,6 +666,54 @@ audio.addEventListener("volumechange", () => console.log("volumechange", audio.v
 | 校验 | `scripts/validate-music.mjs` 升级 v2：歌单 / 标签 / 时长 / 归属引用校验 |
 
 写入类接口与既有规则一致：仅本地 dev、`EDITOR_TOKEN` 可选鉴权、保存后 `autopushMusic` 自动推 GitHub。
+
+---
+
+## 十三、照片墙上传与排序（规划，阶段 A 已落地）
+
+目标：照片墙从"空数组硬编码"升级为"文件即数据源 + 本地管理后台"，支持相册/照片上传与排序（↑↓ 按钮 + 拖拽换位双交互）。
+
+**数据模型 `data/photos/library.json`（v1）**：
+
+```json
+{
+  "version": 1,
+  "albums": [
+    {
+      "id": "album-20260805-rainy",
+      "title": "雨天漫游",
+      "description": "",
+      "cover": "",
+      "date": "2026-08-05",
+      "order": 1,
+      "photos": [
+        { "id": "photo-xxx", "url": "/uploads/photos/photo-xxx.jpg", "caption": "屋檐下", "takenAt": "2026-08-05", "order": 1 }
+      ]
+    }
+  ]
+}
+```
+
+`cover` 为空时自动回退第一张照片 URL；保持前台 `Photo/Album` 类型兼容。
+
+**数据层 `lib/photos.ts`**：读取/写入/校验/缓存 + 相册与照片增删改 + `moveAlbum`/`movePhoto`（相邻交换 order，供 ↑↓ 与拖拽统一使用）+ `composeAlbum` 封面回退。
+
+**API（全部仅本地 + `EDITOR_TOKEN`，生产 403）**：
+
+| 路由 | 方法 | 用途 |
+|------|------|------|
+| `/api/photos/library` | GET | 公开读取（封面回退、按 order 排序） |
+| `/api/photos/albums` | POST/PUT/DELETE | 相册增/改/删（PUT 支持 `move: -1|1` 一步排序；DELETE 可连带删本地图片） |
+| `/api/photos/items` | POST/PUT/DELETE | 照片增/改/删（caption/takenAt/order，支持 `move` 排序，可连带删文件） |
+| `/api/photos/upload` | POST | 多图上传（PNG/JPG/GIF/WebP/AVIF，`PHOTO_MAX_MB` 默认 10MB，魔数嗅探，逐张返回 url） |
+
+**管理后台 `/admin/photos`（阶段 B）**：相册列表（↑↓ / 拖拽排序、编辑、删除可选删文件）；相册详情（照片 ↑↓ / 拖拽排序、caption / 拍摄时间编辑、删除）；拖拽多图上传自动入当前相册；复用 `AutopushBanner`。
+
+**前台接入（阶段 C）**：`/photowall` 改服务端读取 `getPhotoLibrary()` 传入 `PhotoWallClient`（props 化）；首页"最新相册"同源读取；搜索 / 灯箱 / 瀑布流不变。
+
+**校验与配置**：`scripts/validate-photos.mjs`（id 唯一、order 整数、本地图片存在性）；`PHOTO_MAX_MB` 环境变量。
+
+**实施状态**：阶段 A（数据层 + 4 个 API + `autopushPhotos` + 校验脚本）已落地；阶段 B（管理后台）/ C（前台接入）待确认后继续。
 
 ---
 

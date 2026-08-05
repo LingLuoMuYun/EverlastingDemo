@@ -88,3 +88,8 @@ export function autopushMusic(message: string): Promise<PushResult> {
   }
   return autopush(targets, message);
 }
+
+/** 照片墙管理后台：只提交 data/photos 与 public/uploads/photos */
+export function autopushPhotos(message: string): Promise<PushResult> {
+  return autopush(["data/photos", "public/uploads/photos"], message);
+}
