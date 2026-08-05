@@ -1,4 +1,14 @@
 {
   "version": 1,
-  "albums": []
+  "albums": [
+    {
+      "id": "album-20260805-test",
+      "title": "test",
+      "description": "",
+      "cover": "",
+      "date": "2026-08-05",
+      "order": 1,
+      "photos": []
+    }
+  ]
 }
