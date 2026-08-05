@@ -11,6 +11,42 @@ const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const KINDS: NoteKind[] = ["article", "talk", "moment"];
 const CACHE_KEY = "notes:all";
 
+/** 将 Markdown 源码片段转为纯文本（去除标记与 HTML 标签、折叠空白），用于列表/首页预览 */
+export function toPlainExcerpt(source: string, maxLength = 100): string {
+  return (
+    source
+      // 图片语法整段移除
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+      // 链接仅保留文字
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+      // 行内代码去掉反引号
+      .replace(/`([^`]*)`/g, "$1")
+      // HTML 标签（如 <br>）替换为空格
+      .replace(/<[^>]+>/g, " ")
+      // 块引用符
+      .replace(/^>+\s?/gm, "")
+      // 标题符
+      .replace(/^#{1,6}\s+/gm, "")
+      // 无序列表符
+      .replace(/^\s*[-*+]\s+/gm, "")
+      // 有序列表序号
+      .replace(/^\s*\d+[.)]\s+/gm, "")
+      // 表格行
+      .replace(/^\s*\|.*\|[ \t]*$/gm, "")
+      // 加粗 / 删除线 / 斜体
+      .replace(/(\*\*|__)([^*_]+)\1/g, "$2")
+      .replace(/~~([^~]+)~~/g, "$1")
+      .replace(/(^|[^*\w])\*([^*\n]+)\*(?!\*)/g, "$1$2")
+      // 水平分割线
+      .replace(/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/gm, "")
+      // 折叠空白
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, maxLength)
+      .trim()
+  );
+}
+
 export function isValidSlug(slug: string): boolean {
   return SLUG_RE.test(slug);
 }
@@ -44,7 +80,7 @@ function readNoteFile(fileName: string): NoteMeta | null {
     ...(data as Omit<NoteMeta, "slug" | "content">),
     date: rawDate,
     content,
-    excerpt: data.description || content.replace(/^#+ .*\n/m, "").substring(0, 100),
+    excerpt: data.description || toPlainExcerpt(content, 100),
   };
 }
 

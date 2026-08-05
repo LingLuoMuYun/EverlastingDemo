@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import { unified } from "unified";
+import { toPlainExcerpt } from "./notes";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -95,7 +96,7 @@ export function getAllMarkdownFiles(dirName: string): MarkdownFile[] {
         slug: fileName.replace(/\.md$/, ""),
         ...meta,
         content,
-        excerpt: typeof meta.description === "string" ? meta.description : content.substring(0, 100),
+        excerpt: typeof meta.description === "string" ? meta.description : toPlainExcerpt(content, 100),
       } as MarkdownFile;
     })
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
