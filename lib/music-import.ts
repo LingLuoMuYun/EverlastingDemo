@@ -53,7 +53,7 @@ export async function previewPlaylist(playlistId: string, limit = 100): Promise<
     cover: playlist.cover,
     trackCount: playlist.trackCount,
     fetched: playlist.tracks.length,
-    existingCount: playlist.tracks.filter((t) => existing.has(t.id)).length,
+    existingCount: playlist.allIds.filter((id) => existing.has(id)).length,
     tracks: playlist.tracks.map((t) => ({ ...t, exists: existing.has(t.id) })),
   };
 }
@@ -73,42 +73,45 @@ export async function importPlaylist(opts: PlaylistImportOptions): Promise<Playl
     skipped: [],
     failed: [],
   };
+  // 完整 ID 列表（优先 trackIds；兜底用已返回 tracks）
+  const ids = (playlist.allIds.length ? playlist.allIds : playlist.tracks.map((t) => t.id)).slice(0, maxSongs);
+  const nameMap = new Map(playlist.tracks.map((t) => [t.id, t.name]));
 
   const CHUNK = 4; // 并发防风控
-  for (let i = 0; i < playlist.tracks.length; i += CHUNK) {
-    const chunk = playlist.tracks.slice(i, i + CHUNK);
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const chunk = ids.slice(i, i + CHUNK);
     const results = await Promise.all(
-      chunk.map(async (t) => {
-        const name = t.name;
+      chunk.map(async (id) => {
+        const name = nameMap.get(id) || "";
         try {
-          if (existing.has(t.id)) {
+          if (existing.has(id)) {
             if (skipExisting) {
-              return { kind: "skipped" as const, item: { id: t.id, name, reason: "曲库已存在" } };
+              return { kind: "skipped" as const, item: { id, name: name || "未知歌曲", reason: "曲库已存在" } };
             }
-            const meta = await fetchNeteaseTrack(t.id);
-            const updated = updateTrack(`netease-${t.id}`, {
+            const meta = await fetchNeteaseTrack(id);
+            const updated = updateTrack(`netease-${id}`, {
               title: meta.title,
               artist: meta.artist,
               album: meta.album || undefined,
               cover: meta.cover || undefined,
-              duration: meta.duration ?? t.duration,
+              duration: meta.duration,
               lyrics: meta.lyrics,
             });
             return { kind: "imported" as const, track: updated, updated: true };
           }
-          const meta = await fetchNeteaseTrack(t.id);
+          const meta = await fetchNeteaseTrack(id);
           const track = addTrack({
             ...meta,
-            duration: meta.duration ?? t.duration,
+            duration: meta.duration,
             tags: opts.tags?.length ? opts.tags : undefined,
             collectionIds: opts.collectionId ? [opts.collectionId] : undefined,
           });
-          existing.add(t.id);
+          existing.add(id);
           return { kind: "imported" as const, track, updated: false };
         } catch (err) {
           return {
             kind: "failed" as const,
-            item: { id: t.id, name, reason: String((err as Error).message || err).slice(0, 120) },
+            item: { id, name: name || "未知歌曲", reason: String((err as Error).message || err).slice(0, 120) },
           };
         }
       })

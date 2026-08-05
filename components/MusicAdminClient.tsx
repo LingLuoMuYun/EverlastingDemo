@@ -794,7 +794,7 @@ export default function MusicAdminClient() {
                     <div className="flex-1 min-w-0">
                       <p className="font-black text-slate-900 dark:text-white truncate">{playlistPreview.name}</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        共 {playlistPreview.trackCount} 首 · 本次拉取 {playlistPreview.fetched} 首 · 库内已有 {playlistPreview.existingCount} 首
+                        共 {playlistPreview.trackCount} 首 · 预览前 {playlistPreview.fetched} 首 · 库内已有 {playlistPreview.existingCount} 首
                       </p>
                       <p className="text-[11px] text-slate-400 truncate mt-1">
                         前 3 首：{playlistPreview.tracks.slice(0, 3).map((t) => t.name).join(" / ")}
@@ -855,7 +855,7 @@ export default function MusicAdminClient() {
                     disabled={importing}
                     className="px-5 py-2.5 rounded-xl bg-indigo-500 text-white text-sm font-black hover:bg-indigo-600 transition-all disabled:opacity-60"
                   >
-                    {importing ? "导入中（逐首抓取歌词）..." : `导入 ${playlistPreview.fetched} 首`}
+                    {importing ? "导入中（逐首抓取歌词）..." : `导入（最多 ${importOpts.maxSongs} 首）`}
                   </button>
 
                   {importReport && (
