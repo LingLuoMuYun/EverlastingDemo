@@ -18,7 +18,6 @@ type Note = {
   tags?: string[];
   mood?: string;
   location?: string;
-  images?: string[];
   excerpt?: string;
   content?: string;
 };

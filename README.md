@@ -57,7 +57,6 @@ cover: https://...          # 封面（可选）
 tags: [博客, 开始]          # 可选
 mood: "开心"                # 杂谈/说说 可选
 location: "北京"            # 说说 可选
-images: ["https://..."]     # 说说 可选（图片九宫格/灯箱）
 draft: false                # true = 前台不可见（草稿）
 ---
 

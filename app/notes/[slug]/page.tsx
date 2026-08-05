@@ -8,7 +8,6 @@ import ClientSocials from "../../../components/ClientSocials";
 import ClientTOC from "../../../components/ClientTOC";
 import SidebarLyric from "../../../components/SidebarLyric";
 import ProseStyles from "../../../components/ProseStyles";
-import NoteImages from "../../../components/NoteImages";
 import { getAllNotesMeta, getNote } from "../../../lib/notes";
 import { renderMarkdown, extractToc } from "../../../lib/markdown";
 import { KIND_LABELS } from "../../../lib/types";
@@ -109,7 +108,6 @@ export default async function NoteDetail({ params }: { params: Promise<{ slug: s
                 dangerouslySetInnerHTML={{ __html: contentHtml }}
               />
 
-              {note.kind === "moment" && <NoteImages images={note.images || []} />}
             </div>
           </article>
 

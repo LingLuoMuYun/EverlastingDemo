@@ -29,7 +29,6 @@ export interface NoteMeta {
   tags?: string[];
   mood?: string;
   location?: string;
-  images?: string[];
   draft?: boolean;
   content: string;
   excerpt?: string;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { KIND_LABELS, type NoteKind } from "../lib/types";
@@ -17,7 +17,6 @@ type NoteLike = {
   tags?: string[];
   mood?: string;
   location?: string;
-  images?: string[];
   draft?: boolean;
   content?: string;
 };
@@ -163,7 +162,6 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush }: { note: NoteLike
   const [tagsText, setTagsText] = useState(note?.tags?.join(", ") || "");
   const [mood, setMood] = useState(note?.mood || "");
   const [location, setLocation] = useState(note?.location || "");
-  const [imagesText, setImagesText] = useState(note?.images?.join(", ") || "");
   const [draft, setDraft] = useState(Boolean(note?.draft));
   const [slug, setSlug] = useState(note?.slug || "");
   const [content, setContent] = useState(note?.content || "");
@@ -178,15 +176,8 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush }: { note: NoteLike
   const [uploading, setUploading] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
 
-  /** 图片栏展示列表：本次上传的 + frontmatter images 字段里的，去重 */
-  const imageList = useMemo(() => {
-    const seen = new Set<string>();
-    return [...uploadedImages, ...parseList(imagesText)].filter((url) => {
-      if (seen.has(url)) return false;
-      seen.add(url);
-      return true;
-    });
-  }, [uploadedImages, imagesText]);
+  /** 图片栏展示列表：本次会话上传的图片 */
+  const imageList = uploadedImages;
 
   const storageKey = `note-unsaved:${note?.slug || "new"}`;
 
@@ -277,7 +268,6 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush }: { note: NoteLike
         tags: parseList(tagsText),
         mood: mood.trim() || undefined,
         location: location.trim() || undefined,
-        images: parseList(imagesText),
         draft,
       };
       const payload = {
@@ -327,7 +317,7 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush }: { note: NoteLike
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind, title, date, description, cover, tagsText, mood, location, imagesText, draft, slug, content]);
+  }, [kind, title, date, description, cover, tagsText, mood, location, draft, slug, content]);
 
   const handleDelete = async () => {
     if (!isNew && !window.confirm(`确定删除 ${slug} 吗？git 可恢复。`)) return;
@@ -382,9 +372,6 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush }: { note: NoteLike
         const alt = (file.name.replace(/\.[^.]+$/, "") || "图片").replace(/["[\]]/g, "");
         insertIntoContent(`![${alt}](${url})`);
         setUploadedImages((prev) => [...prev, url]);
-        if (kind === "moment") {
-          setImagesText((prev) => (prev ? `${prev}, ${url}` : url));
-        }
         showToast(`已上传 ${file.name}，可在图片栏点击重新插入`, "success");
       }
     } finally {
@@ -414,10 +401,9 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush }: { note: NoteLike
     });
   };
 
-  /** 从图片栏移除（只影响列表与 frontmatter，不删除磁盘文件） */
+  /** 从图片栏移除（只影响本会话列表，不删除磁盘文件） */
   const removeImage = (url: string) => {
     setUploadedImages((prev) => prev.filter((u) => u !== url));
-    setImagesText((prev) => parseList(prev).filter((u) => u !== url).join(", "));
   };
 
   /** 点击图片栏缩略图，把图片插入正文光标处 */
@@ -528,10 +514,6 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush }: { note: NoteLike
           <div className="mt-4">
             <label className={labelCls}>封面图 URL</label>
             <input value={cover} onChange={(e) => setCover(e.target.value)} placeholder="https://..." className={inputCls} />
-          </div>
-          <div className="mt-4">
-            <label className={labelCls}>图片 URL（说说，逗号分隔）</label>
-            <input value={imagesText} onChange={(e) => setImagesText(e.target.value)} placeholder="https://a.jpg, https://b.jpg" className={inputCls} />
           </div>
           <div className="mt-4">
             <label className={labelCls}>摘要（留空取正文前 100 字）</label>
