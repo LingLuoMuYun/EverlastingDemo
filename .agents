@@ -1,0 +1,84 @@
+# EverlastingDemo — Agent 工作指南
+
+> 本文件是仓库内 AI Agent（Codex / Claude / Cursor 等）的统一工作规范。
+> 任何 Agent 在本仓库执行任务前，请先完整阅读本文件；`.agents` 本身也遵循"每次更新必须 push"规则。
+
+## 1. 项目定位
+
+个人博客 / 展示型网站，无数据库，内容即文件：
+
+- **框架**：Next.js 16（App Router）+ React 19 + TypeScript 5（strict）
+- **样式**：Tailwind CSS v4 + @tailwindcss/typography
+- **内容**：`notes/*.md`（gray-matter + unified/remark/rehype，支持 KaTeX、highlight.js）
+- **部署**：GitHub（`LingLuoMuYun/EverlastingDemo`，默认分支 `main`）→ Vercel 自动构建
+- **写作**：手改 Markdown 或本地 `/editor`（生产环境只读）
+
+## 2. 铁律：每次更新必须上传 GitHub
+
+1. 任何产生文件变更的任务，收尾前必须完成 `git add` → `git commit` → `git push origin main`。
+2. 禁止"只改不推"；推送失败不算完成，需要重试，或明确告知用户"未推送成功"及原因。
+3. 推送后用 `git status` / `git log origin/main -1` 确认远端已包含本次提交。
+4. 只提交任务相关文件：`git add` 指定范围，避免把无关的本地改动一起推上去。
+5. 纯只读任务（分析、解答、检查）不产生变更，也无需推送。
+
+## 3. 标准工作流
+
+1. **先读后写**：动代码前先读 `README.md`、`.agents`、`siteConfig.ts` 及目标模块，理解约定。
+2. **小步验证**：改完后按风险运行 `npm run lint`、`npx tsc --noEmit`（tsconfig 已 `noEmit: true`）；笔记类变更运行 `node scripts/validate-notes.mjs`。
+3. **提交推送**：按第 6 节规范 commit 并 push。
+4. **收尾汇报**：说明改了什么、验证结果、推送的 commit，便于核对。
+
+## 4. 常用命令
+
+| 命令 | 用途 |
+| --- | --- |
+| `npm run dev` | 本地开发（http://localhost:3000） |
+| `npm run build` / `npm run start` | 生产构建 / 运行 |
+| `npm run lint` | ESLint 检查（eslint-config-next） |
+| `npx tsc --noEmit` | TypeScript 类型检查 |
+| `node scripts/validate-notes.mjs [--strict]` | 校验 `notes/` 的 frontmatter 与 slug |
+
+## 5. 目录与内容约定
+
+```text
+app/           # App Router 路由（notes、editor、timeline、photowall、music 等）
+components/    # UI 组件（客户端组件为主）
+lib/           # 核心逻辑：notes.ts（笔记读取）、markdown.ts（渲染）、types.ts
+data/          # 静态数据：相册 / 友链 / 项目
+scripts/       # 工具脚本：笔记校验、旧目录迁移
+notes/*.md     # 全部内容，文件名即 slug
+```
+
+笔记 frontmatter 必须包含 `kind`（`article`=文章 / `talk`=杂谈 / `moment`=说说）与 `date`；可选 `title`、`description`、`cover`、`tags`、`mood`、`location`、`images`、`draft`、`updated`。slug 仅允许小写字母 / 数字 / 中划线；`draft: true` 的笔记前台不可见。
+
+`node_modules/`、`.next/`、`out/`、`*.tsbuildinfo`、`.env*`（除 `.env.example`）已在 `.gitignore`，不要提交；也不要改动 `.env*` 或输出任何密钥 / Token / 连接串。
+
+## 6. 提交规范
+
+参照仓库历史（`feat:` / `fix:` / `docs:` / `chore:` / `refactor:` + 中文描述）：
+
+```text
+feat: 编辑器支持本地上传图片
+docs: 更新随笔内容，替换封面与配图
+chore: 通过 lint 与类型检查，清理死代码
+```
+
+要求：一条提交只做一件事；消息简洁，说明改了什么 / 为什么；不包含敏感信息。
+
+## 7. 参照 project-guide-skill 的优化原则
+
+本文件参考了 `.claude/skills/project-guide-skill/`（跨平台项目分析技能），吸收以下通用原则：
+
+- **先检查再下结论**：结论绑定证据（文件路径、配置、命令输出），不做未经验证的承诺式表述。
+- **区分证据等级**：已观察（读文件确认）/ 文档声明 / 运行验证（命令输出）/ 推断 / 待确认——汇报时按此区分。
+- **只读优先**：分析、解答类任务保持只读，不擅自改动代码；确需修改时先说明范围。
+- **按规模自适应**：大范围改动前先盘点文件规模与影响面，避免盲目全量重写。
+- **中文优先**：面向中文项目，默认用中文汇报与写提交信息。
+- **不评价、不泄漏**：不输出密钥 / 令牌 / 连接串；发现风险只描述现状与严重性。
+
+## 8. 常见任务提示
+
+- **写 / 改笔记**：遵守 frontmatter 与 slug 规则 → `node scripts/validate-notes.mjs` → commit + push。
+- **改 UI / 功能**：先定位 `app/` 路由与 `components/`，保持毛玻璃风格与现有主题体系；跑 lint + tsc。
+- **排障**：先复现、收集日志与报错，定位到文件 / 行号后再提方案，验证后推送。
+- **仓库规模较大时**：先浅层扫描（README、目录树、manifest），再聚焦目标模块，不要一上来读全部代码。
