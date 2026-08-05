@@ -9,13 +9,14 @@ export const metadata = {
   description: siteConfig.chatterDescription || "日常碎片与灵感记录",
 };
 
-export default function NotesPage() {
+export default async function NotesPage({ searchParams }: { searchParams: Promise<{ kind?: string }> }) {
+  const { kind } = await searchParams;
   const notes = getAllNotesMeta();
   return (
     <div className="min-h-screen relative pb-10">
       <Navbar />
       <PageTransition>
-        <NoteBoard notes={notes} />
+        <NoteBoard notes={notes} initialKind={kind} />
       </PageTransition>
     </div>
   );

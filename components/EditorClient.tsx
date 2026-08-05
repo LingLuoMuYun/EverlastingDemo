@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { KIND_LABELS, type NoteKind } from "../lib/types";
@@ -36,6 +36,24 @@ function parseList(text: string): string[] {
     .filter(Boolean);
 }
 
+/** 北京标准时间（UTC+8，不随机器时区变化）→ datetime-local 字符串 */
+function toBeijingDateTimeInput(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const bj = new Date(d.getTime() + 8 * 60 * 60 * 1000);
+  return `${bj.getUTCFullYear()}-${pad(bj.getUTCMonth() + 1)}-${pad(bj.getUTCDate())}T${pad(bj.getUTCHours())}:${pad(bj.getUTCMinutes())}`;
+}
+
+function nowBeijingDateTimeInput(): string {
+  return toBeijingDateTimeInput(new Date());
+}
+
+/** 兼容 note.date 的各种写法（YYYY-MM-DD / YYYY-MM-DD HH:MM），统一成 datetime-local 值 */
+function toDateTimeInput(value: string | undefined): string {
+  if (!value) return nowBeijingDateTimeInput();
+  const v = value.trim().replace(" ", "T");
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v) ? v : `${v.slice(0, 10)}T00:00`;
+}
+
 function clientGenerateSlug(title: string, date = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   const prefix = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
@@ -53,22 +71,23 @@ const labelCls = "text-[10px] md:text-xs font-black text-slate-500 dark:text-sla
 
 export default function EditorClient(
   props:
-    | { mode: "list"; notes: NoteLike[] }
-    | { mode: "edit"; note: NoteLike | null; initialMtime?: number | null; allSlugs?: string[] }
+    | { mode: "list"; notes: NoteLike[]; autoPush?: boolean }
+    | { mode: "edit"; note: NoteLike | null; initialMtime?: number | null; allSlugs?: string[]; autoPush?: boolean }
 ) {
   if (props.mode === "list") {
-    return <EditorList notes={props.notes} />;
+    return <EditorList notes={props.notes} autoPush={props.autoPush} />;
   }
   return (
     <EditorForm
       note={props.note}
       initialMtime={props.initialMtime ?? null}
       allSlugs={props.allSlugs || []}
+      autoPush={props.autoPush}
     />
   );
 }
 
-function EditorList({ notes }: { notes: NoteLike[] }) {
+function EditorList({ notes, autoPush }: { notes: NoteLike[]; autoPush?: boolean }) {
   return (
     <div className="w-full max-w-5xl mx-auto px-4 sm:px-10 py-8 pt-24 md:pt-28 relative z-10">
       <div className="flex items-start justify-between mb-8 gap-4 flex-wrap">
@@ -77,6 +96,11 @@ function EditorList({ notes }: { notes: NoteLike[] }) {
           <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium mt-2">
             笔记列表（含草稿）· 保存只写本地文件，需 git push 才会发布
           </p>
+          {autoPush && (
+            <p className="text-[10px] md:text-xs text-green-600 dark:text-green-400 font-bold mt-1">
+              自动推送已开启：每次保存后自动 git commit + push 到 GitHub（AUTO_PUSH=0 可关闭）
+            </p>
+          )}
         </div>
         <Link
           href="/editor/new"
@@ -125,14 +149,15 @@ function EditorList({ notes }: { notes: NoteLike[] }) {
   );
 }
 
-function EditorForm({ note, initialMtime, allSlugs }: { note: NoteLike | null; initialMtime: number | null; allSlugs: string[] }) {
+function EditorForm({ note, initialMtime, allSlugs, autoPush }: { note: NoteLike | null; initialMtime: number | null; allSlugs: string[]; autoPush?: boolean }) {
   const router = useRouter();
   const { showToast } = useToast();
   const isNew = !note;
 
   const [kind, setKind] = useState<NoteKind>(note?.kind || "article");
   const [title, setTitle] = useState(note?.title || "");
-  const [date, setDate] = useState((note?.date || new Date().toISOString().slice(0, 16)).replace(" ", "T"));
+  // 新建笔记默认当前北京标准时间（UTC+8）；编辑沿用已有 date
+  const [date, setDate] = useState(() => toDateTimeInput(note?.date));
   const [description, setDescription] = useState(note?.description || "");
   const [cover, setCover] = useState(note?.cover || "");
   const [tagsText, setTagsText] = useState(note?.tags?.join(", ") || "");
@@ -151,6 +176,17 @@ function EditorForm({ note, initialMtime, allSlugs }: { note: NoteLike | null; i
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+
+  /** 图片栏展示列表：本次上传的 + frontmatter images 字段里的，去重 */
+  const imageList = useMemo(() => {
+    const seen = new Set<string>();
+    return [...uploadedImages, ...parseList(imagesText)].filter((url) => {
+      if (seen.has(url)) return false;
+      seen.add(url);
+      return true;
+    });
+  }, [uploadedImages, imagesText]);
 
   const storageKey = `note-unsaved:${note?.slug || "new"}`;
 
@@ -264,8 +300,15 @@ function EditorForm({ note, initialMtime, allSlugs }: { note: NoteLike | null; i
         showToast(data.error || "保存失败", "error");
         return;
       }
+      const result = await res.json().catch(() => ({}));
       localStorage.removeItem(storageKey);
-      showToast(isNew ? "已创建笔记（记得 git push 发布）" : "已保存（记得 git push 发布）", "success");
+      if (result.push?.ok) {
+        showToast(isNew ? "已创建并推送到 GitHub" : "已保存并推送到 GitHub", "success");
+      } else if (result.push && !result.push.ok) {
+        showToast(`已${isNew ? "创建" : "保存"}，但推送失败：${result.push.error || "未知错误"}`, "error");
+      } else {
+        showToast(isNew ? "已创建笔记（记得 git push 发布）" : "已保存（记得 git push 发布）", "success");
+      }
       router.push("/editor");
       router.refresh();
     } finally {
@@ -296,12 +339,15 @@ function EditorForm({ note, initialMtime, allSlugs }: { note: NoteLike | null; i
         return;
       }
       const res = await fetch(`/api/notes?slug=${encodeURIComponent(slug)}`, { method: "DELETE", headers: authHeaders() });
-      if (!res.ok && res.status !== 204) {
+      if (!res.ok) {
         showToast("删除失败", "error");
         return;
       }
+      const data = await res.json().catch(() => ({}));
       localStorage.removeItem(storageKey);
-      showToast("已删除", "success");
+      if (data.push?.ok) showToast("已删除并推送到 GitHub", "success");
+      else if (data.push && !data.push.ok) showToast(`已删除，但推送失败：${data.push.error || "未知错误"}`, "error");
+      else showToast("已删除", "success");
       router.push("/editor");
       router.refresh();
     } finally {
@@ -335,10 +381,11 @@ function EditorForm({ note, initialMtime, allSlugs }: { note: NoteLike | null; i
         if (!url) continue;
         const alt = (file.name.replace(/\.[^.]+$/, "") || "图片").replace(/["[\]]/g, "");
         insertIntoContent(`![${alt}](${url})`);
+        setUploadedImages((prev) => [...prev, url]);
         if (kind === "moment") {
           setImagesText((prev) => (prev ? `${prev}, ${url}` : url));
         }
-        showToast(`已上传 ${file.name}（记得 git push 发布）`, "success");
+        showToast(`已上传 ${file.name}，可在图片栏点击重新插入`, "success");
       }
     } finally {
       setUploading(false);
@@ -367,6 +414,19 @@ function EditorForm({ note, initialMtime, allSlugs }: { note: NoteLike | null; i
     });
   };
 
+  /** 从图片栏移除（只影响列表与 frontmatter，不删除磁盘文件） */
+  const removeImage = (url: string) => {
+    setUploadedImages((prev) => prev.filter((u) => u !== url));
+    setImagesText((prev) => parseList(prev).filter((u) => u !== url).join(", "));
+  };
+
+  /** 点击图片栏缩略图，把图片插入正文光标处 */
+  const insertImage = (url: string) => {
+    const name = url.split("/").pop()?.replace(/\.[^.]+$/, "") || "图片";
+    insertIntoContent(`![${name}](${url})`);
+    showToast("已插入到光标处", "success");
+  };
+
   const backLink = (
     <Link href="/editor" className="text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
       ← 返回列表
@@ -381,6 +441,12 @@ function EditorForm({ note, initialMtime, allSlugs }: { note: NoteLike | null; i
           <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tighter mt-2">
             {isNew ? "新建笔记" : `编辑：${slug}`}
           </h1>
+          {autoPush && (
+            <span className="inline-flex items-center gap-1.5 mt-2 text-[10px] font-black px-2.5 py-1 rounded-full border bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+              自动推送已开启：保存后自动 push 到 GitHub
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {!isNew && (
@@ -414,8 +480,19 @@ function EditorForm({ note, initialMtime, allSlugs }: { note: NoteLike | null; i
               </select>
             </div>
             <div>
-              <label className={labelCls}>日期</label>
-              <input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} />
+              <label className={labelCls}>日期时间</label>
+              <div className="flex gap-2">
+                <input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} />
+                <button
+                  type="button"
+                  onClick={() => setDate(nowBeijingDateTimeInput())}
+                  className="shrink-0 px-3 py-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-xs font-black hover:bg-indigo-500/20 transition-colors"
+                  title="设为当前本地时间"
+                >
+                  现在
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400 font-medium mt-1">新建笔记默认当前北京标准时间（UTC+8）</p>
             </div>
           </div>
           <div className="mt-4">
@@ -482,24 +559,34 @@ function EditorForm({ note, initialMtime, allSlugs }: { note: NoteLike | null; i
       </div>
 
       <div
-        className="rounded-2xl bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-white/40 dark:border-white/10 shadow-lg p-5"
+        className="rounded-2xl bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-white/40 dark:border-white/10 shadow-lg p-5 mb-5"
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
           if (e.dataTransfer.files?.length) handleUploadImages(e.dataTransfer.files);
         }}
+        onPaste={(e) => {
+          const files = Array.from(e.clipboardData?.items || [])
+            .filter((i) => i.kind === "file")
+            .map((i) => i.getAsFile())
+            .filter((f): f is File => f !== null);
+          if (files.length) {
+            e.preventDefault();
+            handleUploadImages(files);
+          }
+        }}
       >
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-          <h3 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Markdown 源码</h3>
+          <h3 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">图片栏</h3>
           <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-[10px] text-slate-400 font-bold">自动保存草稿 · 支持粘贴/拖拽上传图片，随 git push 发布</span>
+            <span className="text-[10px] text-slate-400 font-bold">文件管理器选择 / 拖拽 / Ctrl+V 粘贴即可上传</span>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
               className="px-3 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-[11px] font-black hover:bg-indigo-500/20 transition-colors disabled:opacity-50"
             >
-              {uploading ? "上传中..." : "上传图片"}
+              {uploading ? "上传中..." : "从文件管理器选择"}
             </button>
             <input
               ref={fileInputRef}
@@ -512,6 +599,62 @@ function EditorForm({ note, initialMtime, allSlugs }: { note: NoteLike | null; i
                 e.target.value = "";
               }}
             />
+          </div>
+        </div>
+        {imageList.length === 0 ? (
+          <p className="text-xs text-slate-400 italic">
+            还没有图片。选择本地图片、拖拽图片或直接 Ctrl+V 粘贴截图，会自动上传到 public/uploads/notes 并在光标处插入。
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-3">
+            {imageList.map((url) => (
+              <div
+                key={url}
+                onClick={() => insertImage(url)}
+                title="点击插入正文"
+                className="group relative w-24 h-24 rounded-xl overflow-hidden border border-white/30 dark:border-white/10 shadow-md bg-slate-200 dark:bg-slate-700 cursor-pointer"
+              >
+                <img src={url} alt="图片" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeImage(url);
+                  }}
+                  className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white text-[10px] font-black flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="从列表移除（不删除文件）"
+                >
+                  ×
+                </button>
+                <span className="absolute bottom-0 inset-x-0 text-[9px] text-center bg-black/50 text-white py-0.5 opacity-0 group-hover:opacity-100 transition-opacity truncate px-1">
+                  点击插入
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div
+        className="rounded-2xl bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-white/40 dark:border-white/10 shadow-lg p-5"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          if (e.dataTransfer.files?.length) handleUploadImages(e.dataTransfer.files);
+        }}
+      >
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <h3 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Markdown 源码</h3>
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-[10px] text-slate-400 font-bold">自动保存草稿 · 正文中 Ctrl+V 粘贴图片可直接插入</span>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="px-3 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-[11px] font-black hover:bg-indigo-500/20 transition-colors disabled:opacity-50"
+            >
+              {uploading ? "上传中..." : "上传图片"}
+            </button>
           </div>
         </div>
         <textarea

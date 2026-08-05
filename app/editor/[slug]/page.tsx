@@ -19,13 +19,14 @@ export default async function EditNotePage({ params }: { params: Promise<{ slug:
   if (!note) notFound();
   const initialMtime = getNoteMtime(slug);
   const allSlugs = getAllNotesMeta({ includeDraft: true }).map((n) => n.slug);
+  const autoPush = process.env.AUTO_PUSH !== "0";
 
   return (
     <ToastProvider>
       <div className="min-h-screen relative pb-16">
         <Navbar />
         <PageTransition>
-          <EditorClient mode="edit" note={note} initialMtime={initialMtime} allSlugs={allSlugs} />
+          <EditorClient mode="edit" note={note} initialMtime={initialMtime} allSlugs={allSlugs} autoPush={autoPush} />
         </PageTransition>
       </div>
     </ToastProvider>

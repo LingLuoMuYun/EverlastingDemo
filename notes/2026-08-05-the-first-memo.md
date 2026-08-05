@@ -2,14 +2,16 @@
 kind: moment
 title: The first memo
 date: '2026-08-05 02:59'
-cover: 'https://c-ssl.dtstatic.com/uploads/blog/202308/01/y9SBMEm1TbYyqvm.thumb.1000_0.png'
+cover: >-
+  https://c-ssl.dtstatic.com/uploads/blog/202308/01/y9SBMEm1TbYyqvm.thumb.1000_0.png
 tags: []
 location: 杭州
 images:
   - >-
     https://c-ssl.dtstatic.com/uploads/blog/202308/01/y9SBMEm1TbYyqvm.thumb.1000_0.png
+  - /uploads/notes/note-20260805-145538-9guehq.jpg
 draft: false
-updated: '2026-08-05 03:14'
+updated: '2026-08-05 14:55'
 ---
 > 八小时前行，八小时做梦，八小时种朵花
 
@@ -20,8 +22,7 @@ updated: '2026-08-05 03:14'
 到现在还没捋顺秋招的准备工作
 
 唉，会赢的会赢的
-
+![31b1fae9b85d7cdac5ecce3d55a82808](/uploads/notes/note-20260805-145538-9guehq.jpg)
 <br>
-![示例图片](https://c-ssl.dtstatic.com/uploads/blog/202308/01/y9SBMEm1TbYyqvm.thumb.1000_0.png)
 
 **2026/8/5**

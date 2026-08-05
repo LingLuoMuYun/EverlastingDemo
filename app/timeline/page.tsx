@@ -11,7 +11,8 @@ export const metadata = {
   title: "归档与探索 | " + siteConfig.title,
 };
 
-export default function Timeline() {
+export default async function Timeline({ searchParams }: { searchParams: Promise<{ kind?: string; tag?: string }> }) {
+  const { kind, tag } = await searchParams;
   const posts: TimelinePost[] = [];
   const tagCounts: Record<string, number> = {};
 
@@ -47,7 +48,7 @@ export default function Timeline() {
       <div className="min-h-screen relative pb-32">
         <Navbar />
         <PageTransition>
-          <TimelineClient posts={posts} tags={tagsArray} />
+          <TimelineClient posts={posts} tags={tagsArray} initialKind={kind} initialTag={tag} />
         </PageTransition>
       </div>
     </ToastProvider>

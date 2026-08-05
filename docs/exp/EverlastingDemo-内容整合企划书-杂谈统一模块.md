@@ -13,7 +13,7 @@
 > 7. 风险：补充坏 frontmatter、误删、路径穿越、生产暴露、构建缓存/发布延迟、本地图片、多设备冲突等 7 项，并强化并发覆盖对策；
 > 8. 新增附录 D（查缺补漏记录）并扩展现有附录。
 >
-> **实施状态（2026-08-05）**：阶段 0-4 已全部落地（数据模型 / 展示整合 / 本地编辑器 / 数据迁移 / 打磨与文档），`npm run build` 与端到端验证通过；旧目录与旧路由按待决策项 4 保留一个版本周期后删除。
+> **实施状态（2026-08-05）**：阶段 0-4 已全部落地（数据模型 / 展示整合 / 本地编辑器 / 数据迁移 / 打磨与文档），`npm run build` 与端到端验证通过；阶段 5 的 kind 深链已落地；旧目录与旧路由按待决策项 4 完成删除，301 配置已移除。
 
 ---
 
@@ -364,10 +364,66 @@ posts/moments/*.md    → 并入（沿用现有双目录扫描 + Map 去重）
 | 2 本地编辑器 | `/api/notes`（GET/POST/PUT/DELETE + render，含错误约定与路径穿越防护）；`/editor` 与 `/editor/[slug]`；保存/新建/删除/草稿/自动保存/冲突检测/图片插入 | 编辑器可新建、修改、删除笔记并落盘；重启 `npm run dev` 后内容仍在；生产构建中写接口返回 403、/editor 隐藏 | 4-6h |
 | 3 数据迁移 | 迁移脚本（dry-run + 备份 + 冲突报告）；`validate-notes.mjs`；redirects 映射；README 与 siteConfig 文案 | 数据零丢失；迁移报告无未决冲突；全部 notes 通过校验；旧链接全部可达 | 1-2h |
 | 4 打磨与文档 | 编辑器样式与移动端适配；draft 过滤；SEO metadata；README/.env.example 同步；同步更新本文档族 | `npm run lint && npm run build` 通过；文档与实现一致 | 1-2h |
+| 5 可选增强（不阻塞上线） | 见下方「阶段 5 详细展开」 | 见「阶段 5 详细展开」各项验收 | 视选择项 3-5h |
 
 > 建议顺序：先做阶段 0-1（纯展示整合，不碰写盘），验证三类内容在新模块下的观感；再做阶段 2 编辑器；最后迁移存量数据。阶段 1 完成即可单独部署。
 
-**阶段 5（可选增强，不阻塞上线）**：RSS（`/feed.xml`）、sitemap、OG 封面图、搜索/归档的 kind 深链完善、多设备编辑冲突指引文档、迁移报告自动生成 redirects。
+**阶段 5（可选增强，不阻塞上线）**：详见下方「阶段 5 详细展开」。
+
+### 阶段 5 详细展开（可选增强，不阻塞上线）
+
+> **现状盘点（2026-08-05）**：sitemap / robots / feed / OG meta 均未落地；kind 深链（5.4）已落地；多设备冲突检测编辑器已实现（mtime → 409），但缺使用约定文档；旧目录、旧路由与 301 已全部删除（只保留 `/notes`）。下表 5.1-5.6 为原清单，5.7-5.8 为本次新增建议。
+
+| # | 项目 | 优先级 | 为什么值得做 | 工作量 |
+|---|------|--------|--------------|--------|
+| 5.1 | RSS `/feed.xml` | 🟡 推荐 | 个人博客订阅标配，Feedly/Inoreader 等聚合；顺带是 SEO 辅助信号 | 0.5-1h |
+| 5.2 | `sitemap.xml` + `robots.txt` | 🟡 推荐 | 搜索引擎更快收录新笔记；Next 原生支持（`app/sitemap.ts` / `app/robots.ts`），零依赖 | 0.5-1h |
+| 5.3 | OG 封面图与社交分享 meta | 🟡 推荐 | 微信/QQ/Telegram/推特分享卡片目前只有 title/description，没有图 | 0.5-1h |
+| 5.4 | kind 深链（`/notes?kind=`、`/timeline` 筛选） | 🟢 中 | 补上 301 落地缺口，让 `/moments` 旧链接真实生效；筛选结果可分享/可收藏 | 1h |
+| 5.5 | 多设备编辑冲突指引文档 | 🟢 低 | 编辑器已有 409 冲突检测，缺"先 pull 再编辑、同一笔记单入口"约定 | 0.2h |
+| 5.6 | 迁移报告自动生成 redirects | ✅ 已完成并移除 | 迁移已结束；旧路由与 301 已按待决策项 4 删除，仅未来再改名时需脚本化 | 0h |
+| 5.7 | 图片懒加载与外链图本地化（新增） | 🟢 低 | 长文图片多时 `loading="lazy"` 省流量；外链图可下载到 `public/uploads/notes/` 规避图床防盗链/失效，与已实现的上传功能衔接 | 1h |
+| 5.8 | 可选接入评论系统 Giscus / Waline（新增） | ⚪ 看需求 | 对应待决策项 9；Giscus 免后端（GitHub Discussions）、Waline 需自托管，个人博客按需选 | 2-4h |
+
+#### 5.1 RSS `/feed.xml`
+
+- **实现要点**：`app/feed.xml/route.ts` 返回 `application/rss+xml`；复用 `getAllNotesMeta()`（自动过滤 draft），按 `date` 降序；条目含 `title` / `link`（`https://域名/notes/[slug]`）/ `description`（缺省取 excerpt）/ `content:encoded`（全文或前 200 字，二选一）；注意 XML 转义（`&`、`<`、`>`）；可选 `?kind=` 生成分类 feed。
+- **验收**：访问 `/feed.xml` 返回合法 XML（可用解析器校验），含全部已发布笔记；draft 不出现。
+
+#### 5.2 sitemap 与 robots
+
+- **实现要点**：`app/sitemap.ts` 输出静态路由（`/`、`/about`、`/notes`、`/music`、`/photowall`、`/friends`、`/projects`、`/timeline`）+ 每条笔记详情（draft 排除），`lastModified` 取 `updated || date`；`app/robots.ts` 声明 `Sitemap: https://域名/sitemap.xml`。
+- **验收**：`/sitemap.xml` 与 `/robots.txt` 均 200；sitemap 含 4 篇笔记与静态页；draft 不在其中。
+
+#### 5.3 OG 封面图与社交分享
+
+- **实现要点**：`siteConfig` 增加站点绝对地址字段（如 `url: "https://everlasting-demo.vercel.app"`）；`app/notes/[slug]/page.tsx` 的 `generateMetadata` 补 `openGraph`（title/description/type=article/images=[cover]）与 `twitter.card = "summary_large_image"`；`/`、`/notes`、`/about` 补基础 og 字段。**关键**：og:image 必须是绝对 URL（`new URL(cover, siteConfig.url)`），封面缺省用 `defaultPostCover`。
+- **验收**：用社交调试工具（或浏览器查看 meta）能看到 `og:image` 指向封面且为绝对地址。
+
+#### 5.4 kind 深链
+
+- **实现要点**：Next 15+/16 中 `searchParams` 是 `Promise`，`/notes/page.tsx` 改为 async 并 `await searchParams`，把 `kind` 传给 `NoteBoard` 作初始 `activeKind`；`NoteBoard` 在 Tab 变化时用 `router.replace("/notes?kind=...")` 同步 URL（可选）；`/timeline` 同理支持 `?kind=` 与 `?tag=`。`SearchBar` 结果已带 kind 徽章，无需再改。
+- **验收**：访问 `/notes?kind=moment` 自动选中「说说」；`/moments` 301 落地后效果一致；`/timeline?kind=article` 筛选生效。
+
+#### 5.5 多设备编辑冲突指引
+
+- **实现要点**：README 或本文档附录补一小节：同一笔记同时只保留一个编辑入口；换设备先 `git pull` 再编辑；编辑器保存时若检测到磁盘文件被外部修改会返回 409 并提示刷新；git 是最终兜底（`git diff` / `git checkout -- notes/xxx.md` 恢复）。
+- **验收**：README 有「多设备编辑」小节，覆盖上述约定。
+
+#### 5.6 迁移报告自动生成 redirects
+
+- **状态**：已完成并移除（迁移落地；2026-08-05 按待决策项 4 删除旧目录/旧路由，`next.config.ts` 不再含 301）。仅当未来发生笔记改名/目录调整时，可写 `scripts/gen-redirects.mjs` 从迁移报告生成配置。
+
+#### 5.7 图片懒加载与本地化（新增建议）
+
+- **实现要点**：在 `lib/markdown.ts` 的 rehype 插件里与 `referrerPolicy` 一并注入 `loading="lazy"`；`NoteImages` / 轮播卡片同样处理；可选写 `scripts/download-images.mjs` 把笔记里的外链图下载到 `public/uploads/notes/` 并批量替换引用（注意只处理可公开下载的图床，防盗链图需带 Referer 或换源）。
+- **验收**：长文图片懒加载生效（滚动到可视区才加载）；本地化后的图随 git 部署不失效。
+
+#### 5.8 评论系统（新增建议）
+
+- **说明**：Giscus 依赖 GitHub Discussions（国内访问一般），Waline 需要自托管后端；两者都只需在 `/notes/[slug]` 预留的评论区位挂组件。个人博客可暂缓，属"读者互动"需求驱动。
+
+**推荐执行顺序**：5.4（补 301 落地缺口，成本最低收益最直接）→ 5.2 + 5.3（SEO/分享基础）→ 5.1（订阅）→ 5.5（文档，顺手）→ 5.7 / 5.8（按需）。
 
 ---
 
@@ -440,7 +496,7 @@ posts/  chatters/  moments/
 | 1 | 统一目录名 | `notes/`（语义中立，不再暗示"只能放某类"） | 沿用 `chatters/` |
 | 2 | 列表路由 | `/notes` | 沿用 `/chatter` |
 | 3 | kind 取值 | `article` / `talk` / `moment` | 中文值 / 其他枚举 |
-| 4 | 旧目录与旧路由保留期 | 保留一个版本周期后删除 | 立即删除 |
+| 4 | 旧目录与旧路由保留期 | ✅ 已执行：2026-08-05 全部删除（旧目录、旧路由、301 均移除，只保留 `/notes`） | 保留一个版本周期后删除 |
 | 5 | 编辑器鉴权 | 本地无鉴权 | `EDITOR_TOKEN` |
 | 6 | 编辑器底层 | textarea + 实时预览（零依赖） | CodeMirror / Monaco |
 | 7 | 图片存储 | 本地 `public/uploads/notes/` + git 提交（方案 A） | 纯图床外链（方案 B） |

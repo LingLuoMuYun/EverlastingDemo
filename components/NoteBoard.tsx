@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { KIND_LABELS } from "../lib/types";
 import { siteConfig } from "../siteConfig";
@@ -27,6 +28,7 @@ const KIND_COLORS: Record<string, string> = {
   talk: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/10",
   moment: "bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/10",
 };
+const KIND_VALUES = ["article", "talk", "moment"];
 
 function displayTitle(note: Note): string {
   if (note.title) return note.title;
@@ -34,10 +36,21 @@ function displayTitle(note: Note): string {
   return firstLine.replace(/^#+\s*/, "").slice(0, 40) || "碎片记录";
 }
 
-export default function NoteBoard({ notes }: { notes: Note[] }) {
+export default function NoteBoard({ notes, initialKind }: { notes: Note[]; initialKind?: string }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeKind, setActiveKind] = useState<string>("全部");
+  const [activeKind, setActiveKind] = useState<string>(
+    initialKind && KIND_VALUES.includes(initialKind) ? initialKind : "全部"
+  );
   const [activeTag, setActiveTag] = useState<string>("全部");
+
+  /** kind Tab 切换时同步 URL，支持 /notes?kind=moment 深链 */
+  const handleKindChange = (kind: string) => {
+    setActiveKind(kind);
+    const url = kind === "全部" ? pathname : `${pathname}?kind=${kind}`;
+    router.replace(url, { scroll: false });
+  };
 
   const allTags = useMemo(() => {
     const set = new Set<string>();
@@ -88,7 +101,7 @@ export default function NoteBoard({ notes }: { notes: Note[] }) {
           {["全部", "article", "talk", "moment"].map((kind) => (
             <button
               key={kind}
-              onClick={() => setActiveKind(kind)}
+            onClick={() => handleKindChange(kind)}
               className={`px-3 py-1.5 md:px-5 md:py-2 rounded-lg md:rounded-xl text-[10px] md:text-xs font-black transition-all duration-500 border ${
                 activeKind === kind
                   ? "bg-indigo-500 text-white border-indigo-500 shadow-md md:shadow-lg md:shadow-indigo-500/30 scale-105"

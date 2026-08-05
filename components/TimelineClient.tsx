@@ -5,13 +5,30 @@ import TimelineNode from './TimelineNode';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Sparkles, LayoutGrid, ListTree, Calendar, ArrowUp } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { KIND_LABELS } from '../lib/types';
 import type { TimelinePost } from '../lib/types';
 
-export default function TimelineClient({ posts: initialPosts, tags }: { posts: TimelinePost[], tags: { name: string, count: number }[] }) {
+export default function TimelineClient({
+  posts: initialPosts,
+  tags,
+  initialKind,
+  initialTag,
+}: {
+  posts: TimelinePost[];
+  tags: { name: string, count: number }[];
+  initialKind?: string;
+  initialTag?: string;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [posts] = useState(initialPosts);
-  const [selectedTag, setSelectedTag] = useState<string>('All');
-  const [selectedKind, setSelectedKind] = useState<string>('All');
+  const [selectedTag, setSelectedTag] = useState<string>(
+    initialTag && tags.some((t) => t.name === initialTag) ? initialTag : 'All'
+  );
+  const [selectedKind, setSelectedKind] = useState<string>(
+    initialKind && ['article', 'talk', 'moment'].includes(initialKind) ? initialKind : 'All'
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -21,6 +38,25 @@ export default function TimelineClient({ posts: initialPosts, tags }: { posts: T
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const gridScrollRef = useRef<HTMLDivElement>(null);
+
+  /** 筛选变化时同步 URL，支持 /timeline?kind=&tag= 深链 */
+  const syncFilterUrl = (kind: string, tag: string) => {
+    const params = new URLSearchParams();
+    if (kind !== 'All') params.set('kind', kind);
+    if (tag !== 'All') params.set('tag', tag);
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
+
+  const handleKindChange = (kind: string) => {
+    setSelectedKind(kind);
+    syncFilterUrl(kind, selectedTag);
+  };
+
+  const handleTagChange = (tag: string) => {
+    setSelectedTag(tag);
+    syncFilterUrl(selectedKind, tag);
+  };
 
   // 🌟 核心魔法 1：强制移动端为矩阵模式
   useEffect(() => {
@@ -95,7 +131,7 @@ export default function TimelineClient({ posts: initialPosts, tags }: { posts: T
         {['All', 'article', 'talk', 'moment'].map((kind) => (
           <button
             key={kind}
-            onClick={() => setSelectedKind(kind)}
+            onClick={() => handleKindChange(kind)}
             className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl text-[10px] md:text-xs font-black transition-all duration-300 border ${
               selectedKind === kind
                 ? 'bg-indigo-500 text-white border-indigo-500 shadow-md scale-105'
@@ -167,11 +203,11 @@ export default function TimelineClient({ posts: initialPosts, tags }: { posts: T
 
         <div className="w-full flex flex-col md:flex-row justify-between items-center gap-6 bg-white/30 dark:bg-slate-800/30 backdrop-blur-md p-4 rounded-3xl border border-white/20 dark:border-white/5">
           <div className="flex flex-wrap justify-center md:justify-start gap-2 flex-1">
-            <button onClick={() => setSelectedTag('All')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 ${selectedTag === 'All' ? 'bg-indigo-500 text-white shadow-md' : 'bg-white/50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-white'}`}>
+            <button onClick={() => handleTagChange('All')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 ${selectedTag === 'All' ? 'bg-indigo-500 text-white shadow-md' : 'bg-white/50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-white'}`}>
               全部档案
             </button>
             {tags.map(tag => (
-              <button key={tag.name} onClick={() => setSelectedTag(tag.name)} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 ${selectedTag === tag.name ? 'bg-indigo-500 text-white shadow-md' : 'bg-white/50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-white'}`}>
+              <button key={tag.name} onClick={() => handleTagChange(tag.name)} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 ${selectedTag === tag.name ? 'bg-indigo-500 text-white shadow-md' : 'bg-white/50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-white'}`}>
                 {tag.name} <span className="opacity-50 ml-1">{tag.count}</span>
               </button>
             ))}

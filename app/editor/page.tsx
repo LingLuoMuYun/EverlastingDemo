@@ -13,12 +13,13 @@ export const metadata = {
 export default function EditorPage() {
   if (process.env.NODE_ENV === "production") return <EditorReadonly />;
   const notes = getAllNotesMeta({ includeDraft: true });
+  const autoPush = process.env.AUTO_PUSH !== "0";
   return (
     <ToastProvider>
       <div className="min-h-screen relative pb-16">
         <Navbar />
         <PageTransition>
-          <EditorClient mode="list" notes={notes} />
+          <EditorClient mode="list" notes={notes} autoPush={autoPush} />
         </PageTransition>
       </div>
     </ToastProvider>

@@ -9,15 +9,6 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  // 🌟 内容整合：旧路由 301 到统一 /notes（迁移期保留一个版本周期后删除）
-  async redirects() {
-    return [
-      { source: "/posts/:slug", destination: "/notes/:slug", permanent: true },
-      { source: "/chatter/:slug", destination: "/notes/:slug", permanent: true },
-      { source: "/chatter", destination: "/notes", permanent: true },
-      { source: "/moments", destination: "/notes?kind=moment", permanent: true },
-    ];
-  },
 };
 
 export default nextConfig;

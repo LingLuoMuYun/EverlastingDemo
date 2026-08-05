@@ -7,13 +7,13 @@
 ## ✨ 功能特性
 
 - 🧭 **统一「杂谈」内容模块**：文章（`article`）/ 杂谈（`talk`）/ 说说（`moment`）三合一，`/notes` 列表按类型 Tab 筛选 + 搜索 + 标签过滤，详情页按类型渲染（文章 TOC、杂谈心情、说说定位/图片灯箱）
-- ✏️ **本地编辑器**：`/editor` 双栏写作（Markdown 源码 + 实时预览），元数据表单、草稿、自动保存、Ctrl+S、slug 自动生成、冲突检测
+- ✏️ **本地编辑器**：`/editor` 双栏写作（Markdown 源码 + 实时预览），元数据表单、草稿、自动保存、Ctrl+S、slug 自动生成、冲突检测、图片栏（文件选择/粘贴/拖拽上传）、保存后自动推送 GitHub
 - 🎨 毛玻璃设计系统 + 暗/亮主题 + 流动渐变背景
 - 🎵 网易云音乐播放器（云播放、歌词、黑胶动画）
 - ❄️ 和风天气挂件 + 天气特效
 - 📷 照片墙（相册 + 灯箱）、友链、项目展示、归档时间线、关于页
 - 🔍 全站搜索（覆盖全部笔记）
-- 🌐 旧路由 301 兼容（`/posts/*`、`/chatter*`、`/moments` → `/notes/*`）
+- 🧹 内容统一：仅保留 `/notes` 单一内容模块（旧 `posts/` `chatters/` `moments/` 目录与旧路由已删除）
 
 ## 🛠 技术栈
 
@@ -40,6 +40,7 @@ npm run dev
 |------|------|
 | `QWEATHER_KEY` | 和风天气密钥（天气挂件，可选） |
 | `EDITOR_TOKEN` | 本地编辑器鉴权（可选；开启后请求需带 `Authorization: Bearer <token>`） |
+| `AUTO_PUSH` | 本地编辑器保存后自动 `git commit + push`（默认开；置 `0` 关闭；生产始终关闭） |
 
 ## ✍️ 写作：内容模型
 
@@ -67,6 +68,8 @@ draft: false                # true = 前台不可见（草稿）
 
 1. **手改 Markdown**：直接编辑 `notes/` 下的 `.md` 文件；
 2. **本地编辑器**：`npm run dev` 后打开 `/editor`，新建/编辑/删除笔记，保存即写回 `notes/*.md`。
+   - 保存后会自动 `git commit + push` 到 GitHub（可用 `AUTO_PUSH=0` 关闭），发布即完成。
+   - 图片栏支持从文件管理器选择、拖拽、或直接 `Ctrl+V` 粘贴截图，图片自动存到 `public/uploads/notes/` 并随推送发布。
 
 发布流程：`git add . && git commit -m "更新笔记" && git push` → Vercel 自动构建部署。
 
@@ -84,7 +87,7 @@ draft: false                # true = 前台不可见（草稿）
 | `/timeline` | 归档（年月 + 标签 + kind 筛选） |
 | `/photowall` `/music` `/friends` `/projects` `/about` | 照片墙 / 音乐 / 友链 / 项目 / 关于 |
 
-旧路由 `/posts/[slug]`、`/chatter`、`/chatter/[slug]`、`/moments` 已 301 跳转到新地址。
+旧路由 `/posts/*`、`/chatter*`、`/moments` 已删除，404 由统一 404 页兜底；所有内容统一在 `/notes`。
 
 ## 📦 常用命令
 
@@ -125,3 +128,5 @@ node scripts/migrate-notes.mjs             # 执行迁移（幂等）
 |------|------|------|
 | init | 2026-08-04 | EverlastingDemo 初始化（Next.js 16 + React 19 + Tailwind v4） |
 | 0.2.0 | 2026-08-05 | 内容整合：统一「杂谈」模块（notes/ + kind）、本地编辑器、旧路由 301、音乐/天气组件 |
+| 0.3.0 | 2026-08-05 | 深链（/notes?kind=、/timeline?kind=&tag=）；删除旧目录/旧路由与 301；修复图床防盗链图片不显示；编辑器本地图片上传 |
+| 0.4.0 | 2026-08-05 | 编辑器：新建默认当前本地时间 + 「现在」按钮；图片栏（选择/粘贴/拖拽/缩略图插入）；保存后自动推送 GitHub |

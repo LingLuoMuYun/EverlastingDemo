@@ -8,6 +8,7 @@ import {
   isValidSlug,
   validateNoteMeta,
 } from "../../../lib/notes";
+import { autopushNotes } from "../../../lib/autopush";
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -47,7 +48,8 @@ export async function POST(req: NextRequest) {
   const errors = validateNoteMeta(slug, body.data);
   if (errors.length) return NextResponse.json({ error: errors.join("；") }, { status: 400 });
   saveNote({ slug, data: { ...body.data, updated: now() }, content: body.content });
-  return NextResponse.json({ slug }, { status: 201 });
+  const push = await autopushNotes(`chore(notes): 新建 ${slug}`);
+  return NextResponse.json({ slug, push }, { status: 201 });
 }
 
 export async function PUT(req: NextRequest) {
@@ -73,7 +75,8 @@ export async function PUT(req: NextRequest) {
   const errors = validateNoteMeta(slug, body.data);
   if (errors.length) return NextResponse.json({ error: errors.join("；") }, { status: 400 });
   saveNote({ slug, data: { ...body.data, updated: now() }, content: body.content });
-  return NextResponse.json({ slug });
+  const push = await autopushNotes(`chore(notes): 更新 ${slug}`);
+  return NextResponse.json({ slug, push });
 }
 
 export async function DELETE(req: NextRequest) {
@@ -83,5 +86,6 @@ export async function DELETE(req: NextRequest) {
   if (!isValidSlug(slug)) return NextResponse.json({ error: "slug 非法" }, { status: 400 });
   if (!getNote(slug, { includeDraft: true })) return NextResponse.json({ error: "笔记不存在" }, { status: 404 });
   deleteNote(slug);
-  return new NextResponse(null, { status: 204 });
+  const push = await autopushNotes(`chore(notes): 删除 ${slug}`);
+  return NextResponse.json({ slug, push });
 }
