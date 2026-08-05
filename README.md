@@ -11,7 +11,7 @@
 - 🎨 毛玻璃设计系统 + 暗/亮主题 + 流动渐变背景
 - 🎵 网易云音乐播放器（云播放、歌词、黑胶动画）
 - ❄️ 和风天气挂件 + 天气特效
-- 📷 照片墙（相册 + 灯箱）、友链、项目展示、归档时间线、关于页
+- 📷 照片墙（相册 + 灯箱）、项目展示、归档时间线、关于页（含友链 Tab）
 - 🔍 全站搜索（覆盖全部笔记）
 - 🧹 内容统一：仅保留 `/notes` 单一内容模块（旧 `posts/` `chatters/` `moments/` 目录与旧路由已删除）
 
@@ -86,9 +86,9 @@ draft: false                # true = 前台不可见（草稿）
 | `/admin` `/admin/notes` `/admin/music` | 统一管理后台（仅本地）：总览 / 笔记（原 `/editor*` 301）/ 音乐曲库管理 |
 | `/api/notes` `/api/notes/render` | 编辑器读写接口（生产只读） |
 | `/timeline` | 归档（年月 + 标签 + kind 筛选） |
-| `/photowall` `/music` `/friends` `/projects` `/about` | 照片墙 / 音乐 / 友链 / 项目 / 关于 |
+| `/photowall` `/music` `/projects` `/about` | 照片墙 / 音乐 / 项目 / 关于（自我介绍 / 研究动态 / 友链） |
 
-旧路由 `/posts/*`、`/chatter*`、`/moments` 已删除，404 由统一 404 页兜底；所有内容统一在 `/notes`。
+旧路由 `/posts/*`、`/chatter*`、`/moments` 已删除，404 由统一 404 页兜底；所有内容统一在 `/notes`。友链模块已并入关于页（`/about?tab=friends`），旧入口 `/friends` 301 跳转。
 
 ## 📦 常用命令
 

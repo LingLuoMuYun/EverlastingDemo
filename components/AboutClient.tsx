@@ -6,6 +6,7 @@ import { Activity } from 'lucide-react';
 import { siteConfig } from '../siteConfig';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import FriendsBoard from '../app/about/FriendsBoard';
 
 type ActivityRecord = {
   id: string;
@@ -154,6 +155,12 @@ export default function AboutClient({
               className={`flex-1 md:flex-none px-4 md:px-6 py-2 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-black transition-all duration-300 ${activeTab === 'activity' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-500 hover:text-indigo-500'}`}
             >
               研究动态
+            </button>
+            <button
+              onClick={() => handleTabChange('friends')}
+              className={`flex-1 md:flex-none px-4 md:px-6 py-2 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-black transition-all duration-300 ${activeTab === 'friends' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-500 hover:text-indigo-500'}`}
+            >
+              友链
             </button>
           </div>
         </div>
@@ -350,6 +357,12 @@ export default function AboutClient({
                 )}
               </div>
 
+            </motion.div>
+          )}
+
+          {activeTab === 'friends' && (
+            <motion.div key="friends" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }}>
+              <FriendsBoard />
             </motion.div>
           )}
         </AnimatePresence>

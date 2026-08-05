@@ -2,9 +2,8 @@
 
 import { useState } from 'react';
 import { motion, type Variants } from 'framer-motion';
-import BackButton from '../../components/BackButton';
 import { friendsData } from '../../data/friends';
-import { siteConfig } from '../../siteConfig'; // 🌟 引入刚刚更新的全局配置文件
+import { siteConfig } from '../../siteConfig';
 
 // Framer Motion 动画变体：交错子元素
 const containerVariants: Variants = {
@@ -21,10 +20,10 @@ const itemVariants: Variants = {
 };
 
 export default function FriendsBoard() {
-  // 🌟 控制复制按钮的状态
+  // 控制复制按钮的状态
   const [isCopied, setIsCopied] = useState(false);
 
-  // 🌟 直接从 siteConfig 读取申请格式
+  // 直接从 siteConfig 读取申请格式
   const applyFormat = siteConfig.friendLinkApplyFormat;
 
   const handleCopy = () => {
@@ -34,21 +33,16 @@ export default function FriendsBoard() {
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-3 sm:px-10 py-6 md:py-10 relative z-10 scroll-smooth mt-20 md:mt-10">
+    <div className="w-full relative z-10 scroll-smooth">
 
-      {/* 顶部导航与标题 */}
-      <div className="mb-8 md:mb-12 flex flex-col items-center md:items-start">
-        <div className="w-full flex justify-start mb-4 md:mb-6">
-          <BackButton />
-        </div>
-        <div className="text-center md:text-left w-full px-2 md:px-0">
-          <h1 className="text-2xl md:text-4xl font-black text-slate-900 dark:text-white mb-2 md:mb-4 tracking-widest drop-shadow-sm uppercase">
-            云端引力
-          </h1>
-          <p className="text-xs md:text-base text-slate-600 dark:text-slate-400 font-serif">
-            那些散落在赛博宇宙各处的有趣灵魂与神经节点。
-          </p>
-        </div>
+      {/* 区块标题 */}
+      <div className="mb-8 md:mb-10 flex flex-col items-center text-center">
+        <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white mb-2 md:mb-3 tracking-widest drop-shadow-sm uppercase">
+          云端引力
+        </h2>
+        <p className="text-xs md:text-base text-slate-600 dark:text-slate-400 font-serif">
+          那些散落在赛博宇宙各地的有趣灵魂与神经节点。
+        </p>
       </div>
 
       <motion.div
@@ -65,7 +59,7 @@ export default function FriendsBoard() {
               rel="noopener noreferrer"
               className="block h-full rounded-2xl md:rounded-3xl bg-white/60 dark:bg-slate-800/50 backdrop-blur-xl border border-white/40 dark:border-white/10 shadow-lg md:shadow-xl overflow-hidden transition-all duration-500 hover:-translate-y-1 md:hover:-translate-y-2 hover:scale-[1.02] group relative p-3 md:p-6"
             >
-              {/* 卡片底部的动态光晕 */}
+              {/* 卡片底部的动态光斑 */}
               <div
                 className="absolute -bottom-10 -right-10 w-24 h-24 md:w-32 md:h-32 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"
                 style={{ backgroundColor: friend.themeColor }}
@@ -78,9 +72,9 @@ export default function FriendsBoard() {
                 </div>
 
                 <div className="flex-1 overflow-hidden w-full">
-                  <h2 className="text-sm md:text-xl font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
+                  <h3 className="text-sm md:text-xl font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
                     {friend.name}
-                  </h2>
+                  </h3>
                   <div className="text-[9px] md:text-xs font-bold text-indigo-500/70 dark:text-indigo-400/70 tracking-widest uppercase mt-0.5 md:mt-1 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-indigo-500 animate-pulse"></span>
                     Online
@@ -102,11 +96,11 @@ export default function FriendsBoard() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.6, delay: 0.2 }}
-        className="mt-14 md:mt-20 bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-white/50 dark:border-slate-700/50 rounded-2xl md:rounded-3xl p-5 md:p-8 max-w-3xl mx-auto text-center shadow-lg md:shadow-xl relative"
+        className="mt-12 md:mt-16 bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-white/50 dark:border-slate-700/50 rounded-2xl md:rounded-3xl p-5 md:p-8 max-w-2xl mx-auto text-center shadow-lg md:shadow-xl relative"
       >
-        <h2 className="text-lg md:text-2xl font-black text-slate-900 dark:text-white mb-2 md:mb-4 tracking-wider">
-          ✨ 建立神经连接
-        </h2>
+        <h3 className="text-lg md:text-2xl font-black text-slate-900 dark:text-white mb-2 md:mb-4 tracking-wider">
+          ✦ 建立神经连接
+        </h3>
         <p className="text-xs md:text-base text-slate-600 dark:text-slate-400 font-serif mb-4 md:mb-6">
           欢迎各位大佬交换友链！请一键复制下方格式：
         </p>

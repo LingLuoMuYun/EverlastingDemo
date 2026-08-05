@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
   // 旧后台路由 301 到统一管理后台（沿用 posts→notes 的历史惯例）
   async redirects() {
     return [
+      // 友链模块已并入关于页（tab=friends），保留旧入口 301
+      { source: "/friends", destination: "/about?tab=friends", permanent: true },
       { source: "/editor", destination: "/admin/notes", permanent: true },
       { source: "/editor/new", destination: "/admin/notes/new", permanent: true },
       { source: "/editor/:slug", destination: "/admin/notes/:slug", permanent: true },
