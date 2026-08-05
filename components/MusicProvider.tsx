@@ -34,13 +34,16 @@ export interface Song {
 
 interface RawSong {
   id?: string | number;
+  title?: string;
   name?: string;
   artist?: string;
   author?: string;
   cover?: string;
   pic?: string;
   url?: string;
+  src?: string;
   lrc?: string;
+  lyrics?: { lrc?: string; tlyric?: string; yrc?: string | null };
   error?: boolean;
 }
 
@@ -153,36 +156,49 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let isMounted = true;
+
+    const toSongs = (raw: RawSong[]): Song[] =>
+      raw
+        .filter((song): song is RawSong => Boolean(song && (song.src || song.url) && !song.error))
+        .map((song) => ({
+          id: song.id || Math.random().toString(),
+          title: song.title || song.name || '未知歌曲',
+          artist: song.artist || song.author || '未知歌手',
+          cover: song.cover || song.pic || 'https://bu.dusays.com/2026/03/24/69c24230a5ff8.jpg',
+          src: song.src || song.url || '',
+          lrcUrl: null,
+          lyrics: song.lyrics?.lrc ? parseLrc(song.lyrics.lrc) : []
+        }));
+
+    const applyPlaylist = (songs: Song[]) => {
+      if (!isMounted) return;
+      if (songs.length > 0) setPlaylist(songs);
+      else setCurrentLyric("正在为你寻找绝世好歌");
+      setIsLoading(false);
+    };
+
     const fetchMusicData = async () => {
+      // 新数据源：本地曲库 data/music/library.json
+      try {
+        const res = await fetch(`/api/music/library`);
+        if (!res.ok) throw new Error(`library ${res.status}`);
+        const data = (await res.json()) as { tracks: RawSong[] };
+        applyPlaylist(toSongs(data.tracks));
+        return;
+      } catch {
+        // 降级：旧接口（siteConfig.cloudMusicIds，阶段 4 移除）
+      }
+
       try {
         const res = await fetch(`/api/music?ids=${siteConfig.cloudMusicIds.join(',')}`);
         const rawResults = (await res.json()) as RawSong[];
-
-        const mergedPlaylist = rawResults
-          .filter((song): song is RawSong & { url: string } => Boolean(song && song.url && !song.error))
-          .map((song) => ({
-            id: song.id || Math.random().toString(),
-            title: song.name || '未知歌曲',
-            artist: song.artist || song.author || '未知歌手',
-            cover: song.cover || song.pic || 'https://bu.dusays.com/2026/03/24/69c24230a5ff8.jpg',
-            src: song.url,
-            lrcUrl: null,
-            lyrics: song.lrc ? parseLrc(song.lrc) : []
-          }));
-
-        if (isMounted) {
-          if (mergedPlaylist.length > 0) setPlaylist(mergedPlaylist);
-          else setCurrentLyric("正在为你寻找绝世好歌");
-          setIsLoading(false);
-        }
+        applyPlaylist(toSongs(rawResults));
       } catch {
         if (isMounted) { setCurrentLyric("网络初始化失败"); setIsLoading(false); }
       }
     };
 
-    if (siteConfig.cloudMusicIds?.length > 0) fetchMusicData();
-    else setIsLoading(false);
-
+    fetchMusicData();
     return () => { isMounted = false; };
   }, []);
 
