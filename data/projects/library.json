@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "projects": [
+    {
+      "id": "project-20260806-embark-ai",
+      "name": "EMBARK - AI知识库",
+      "description": "一个基于 Next.js App Router 的全栈 AI 知识库管理平台，支持知识生产、知识管理、知识检索和知识消费的完整闭环。",
+      "icon": "🛠️",
+      "githubUrl": "https://github.com/a2607820941/rag-creater",
+      "tags": [
+        "Next.js",
+        "React",
+        "SQLite",
+        "Zod"
+      ],
+      "order": 1,
+      "draft": false,
+      "createdAt": "2026-08-05T17:03:13.669Z",
+      "updatedAt": "2026-08-05T17:03:13.669Z"
+    }
+  ]
+}
