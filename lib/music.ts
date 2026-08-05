@@ -9,6 +9,13 @@ export const MUSIC_LIBRARY_PATH = path.join(MUSIC_DIR, "library.json");
 
 export type MusicSource = "netease" | "local";
 
+export interface MusicCollection {
+  id: string;
+  name: string;
+  cover?: string;
+  order: number;
+}
+
 export interface MusicTrack {
   id: string;
   source: MusicSource;
@@ -18,6 +25,9 @@ export interface MusicTrack {
   artist: string;
   album?: string;
   cover?: string;
+  duration?: number; // 秒
+  tags?: string[];
+  collectionIds?: string[];
   lyrics?: { lrc?: string; tlyric?: string; yrc?: string | null } | null;
   order: number;
   addedAt?: string;
@@ -25,6 +35,7 @@ export interface MusicTrack {
 
 export interface MusicLibrary {
   version: number;
+  collections: MusicCollection[];
   tracks: MusicTrack[];
 }
 
@@ -36,6 +47,9 @@ export interface ComposedTrack {
   album: string;
   cover: string;
   src: string;
+  duration?: number;
+  tags?: string[];
+  collectionIds?: string[];
   lyrics: MusicTrack["lyrics"];
 }
 
@@ -59,6 +73,19 @@ export function generateLocalId(title: string, date = new Date()): string {
   return `local-${prefix}-${slug}`;
 }
 
+/** 生成歌单 id：col-{yyyyMMdd}-{slug} */
+export function generateCollectionId(name: string, date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const prefix = `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}`;
+  const slug =
+    String(name || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 30) || `col-${Date.now().toString(36)}`;
+  return `col-${prefix}-${slug}`;
+}
+
 /** 校验单条曲目，返回错误数组（空数组 = 合法） */
 export function validateTrack(track: MusicTrack): string[] {
   const errors: string[] = [];
@@ -73,34 +100,50 @@ export function validateTrack(track: MusicTrack): string[] {
     errors.push(`${track.id}: local 曲目缺少 file`);
   }
   if (!track.title) errors.push(`${track.id}: 缺少 title`);
+  if (track.tags && !Array.isArray(track.tags)) errors.push(`${track.id}: tags 应为数组`);
+  if (track.collectionIds && !Array.isArray(track.collectionIds)) errors.push(`${track.id}: collectionIds 应为数组`);
+  if (track.duration !== undefined && (!Number.isFinite(track.duration) || track.duration <= 0)) {
+    errors.push(`${track.id}: duration 应为正数（秒）`);
+  }
   return errors;
 }
 
 function normalizeLibrary(raw: MusicLibrary): MusicLibrary {
+  const collections = (Array.isArray(raw?.collections) ? raw.collections : [])
+    .filter((c) => c && typeof c.id === "string" && c.id && c.name)
+    .sort((a, b) => a.order - b.order);
+  const validCollectionIds = new Set(collections.map((c) => c.id));
   const tracks = (Array.isArray(raw?.tracks) ? raw.tracks : [])
-    .map((t) => {
-      const errors = validateTrack(t);
+    .map((t): MusicTrack | null => {
+      const normalized: MusicTrack = {
+        ...t,
+        tags: Array.isArray(t.tags) ? t.tags : [],
+        collectionIds: Array.isArray(t.collectionIds)
+          ? t.collectionIds.filter((id) => validCollectionIds.has(id))
+          : [],
+      };
+      const errors = validateTrack(normalized);
       if (errors.length) {
         console.warn(`[music] ${errors.join("; ")}`);
         return null;
       }
-      return t;
+      return normalized;
     })
     .filter((t): t is MusicTrack => t !== null)
     .sort((a, b) => a.order - b.order);
-  return { version: raw?.version ?? 1, tracks };
+  return { version: 2, collections, tracks };
 }
 
 /** 读取曲库（带 60s TTL 缓存；写入后 clearCache 立即生效） */
 export function getLibrary(): MusicLibrary {
   const fetcher = (): MusicLibrary => {
-    if (!fs.existsSync(MUSIC_LIBRARY_PATH)) return { version: 1, tracks: [] };
+    if (!fs.existsSync(MUSIC_LIBRARY_PATH)) return { version: 2, collections: [], tracks: [] };
     try {
       const raw = JSON.parse(fs.readFileSync(MUSIC_LIBRARY_PATH, "utf8")) as MusicLibrary;
       return normalizeLibrary(raw);
     } catch (err) {
       console.error("[music] library.json 解析失败:", err);
-      return { version: 1, tracks: [] };
+      return { version: 2, collections: [], tracks: [] };
     }
   };
   return getCached(CACHE_KEY, fetcher);
@@ -127,6 +170,41 @@ export function addTrack(input: Omit<MusicTrack, "order" | "addedAt"> & { order?
   if (errors.length) throw new Error(errors.join("; "));
   saveLibrary({ ...library, tracks: [...library.tracks, track] });
   return track;
+}
+
+/** 新增歌单（自动分配 order） */
+export function addCollection(name: string, cover?: string) {
+  const library = getLibrary();
+  const id = generateCollectionId(name);
+  if (library.collections.some((c) => c.id === id)) throw new Error(`歌单已存在: ${id}`);
+  const maxOrder = library.collections.reduce((m, c) => Math.max(m, c.order), 0);
+  const collection: MusicCollection = { id, name, cover: cover || undefined, order: maxOrder + 1 };
+  saveLibrary({ ...library, collections: [...library.collections, collection] });
+  return collection;
+}
+
+/** 更新歌单（名称/封面/排序） */
+export function updateCollection(id: string, patch: Partial<Omit<MusicCollection, "id">>) {
+  const library = getLibrary();
+  const index = library.collections.findIndex((c) => c.id === id);
+  if (index < 0) throw new Error(`歌单不存在: ${id}`);
+  if (patch.name !== undefined && !patch.name.trim()) throw new Error("歌单名称不能为空");
+  const collections = [...library.collections];
+  collections[index] = { ...collections[index], ...patch, id, name: patch.name?.trim() || collections[index].name };
+  saveLibrary({ ...library, collections });
+  return collections[index];
+}
+
+/** 删除歌单（同时从所有曲目移除引用） */
+export function removeCollection(id: string) {
+  const library = getLibrary();
+  if (!library.collections.some((c) => c.id === id)) throw new Error(`歌单不存在: ${id}`);
+  const collections = library.collections.filter((c) => c.id !== id);
+  const tracks = library.tracks.map((t) =>
+    t.collectionIds?.includes(id) ? { ...t, collectionIds: t.collectionIds.filter((x) => x !== id) } : t
+  );
+  saveLibrary({ ...library, collections, tracks });
+  return id;
 }
 
 /** 更新曲目元数据 / 排序 */
@@ -168,12 +246,19 @@ export function composeTrack(track: MusicTrack): ComposedTrack {
     album: track.album || "",
     cover: track.cover || "",
     src,
+    duration: track.duration,
+    tags: track.tags || [],
+    collectionIds: track.collectionIds || [],
     lyrics: track.lyrics ?? null,
   };
 }
 
 /** 供 /api/music/library 返回（公开读取，去掉内部字段） */
-export function toPublicLibrary(): { version: number; tracks: ComposedTrack[] } {
+export function toPublicLibrary(): { version: number; collections: MusicCollection[]; tracks: ComposedTrack[] } {
   const library = getLibrary();
-  return { version: library.version, tracks: library.tracks.map(composeTrack) };
+  return {
+    version: library.version,
+    collections: library.collections,
+    tracks: library.tracks.map(composeTrack),
+  };
 }

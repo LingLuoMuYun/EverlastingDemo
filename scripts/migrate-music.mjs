@@ -24,8 +24,11 @@ function extractCloudMusicIds() {
 }
 
 function readLibrary() {
-  if (!fs.existsSync(libraryPath)) return { version: 1, tracks: [] };
-  return JSON.parse(fs.readFileSync(libraryPath, "utf8"));
+  if (!fs.existsSync(libraryPath)) return { version: 2, collections: [], tracks: [] };
+  const lib = JSON.parse(fs.readFileSync(libraryPath, "utf8"));
+  if (!Array.isArray(lib.collections)) lib.collections = [];
+  lib.version = 2;
+  return lib;
 }
 
 async function fetchSong(id) {
@@ -61,6 +64,7 @@ async function fetchSong(id) {
     artist: song.artists?.[0]?.name || "未知歌手",
     album: song.album?.name || "",
     cover: song.album?.picUrl || "",
+    duration: song.duration ? Math.round(song.duration / 1000) : undefined,
     lyrics: { lrc, tlyric, yrc },
   };
 }

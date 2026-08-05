@@ -17,6 +17,7 @@ export interface NeteaseTrackMeta {
   artist: string;
   album: string;
   cover: string;
+  duration?: number; // 秒
   lyrics: { lrc: string; tlyric: string; yrc: string | null };
 }
 
@@ -57,7 +58,56 @@ export async function fetchNeteaseTrack(neteaseId: string): Promise<NeteaseTrack
     artist: song.artists?.[0]?.name || "未知歌手",
     album: song.album?.name || "",
     cover: song.album?.picUrl || "",
+    duration: song.duration ? Math.round(song.duration / 1000) : undefined,
     lyrics: { lrc, tlyric, yrc },
+  };
+}
+
+export interface NeteasePlaylistTrack {
+  id: string;
+  name: string;
+  artist: string;
+  album: string;
+  cover: string;
+  duration?: number; // 秒
+}
+
+export interface NeteasePlaylist {
+  id: string;
+  name: string;
+  cover: string;
+  trackCount: number;
+  tracks: NeteasePlaylistTrack[];
+}
+
+/**
+ * 拉取网易云歌单（旧版 playlist/detail 接口对游客返回完整歌曲列表，
+ * v3 接口未登录只返回 10 首，故使用旧接口）
+ */
+export async function fetchNeteasePlaylist(playlistId: string, limit = 100): Promise<NeteasePlaylist> {
+  const res = await fetch(`https://music.163.com/api/playlist/detail?id=${playlistId}`, {
+    headers: NET_EASE_HEADERS,
+    signal: AbortSignal.timeout(10000),
+  });
+  const data = await res.json();
+  const pl = data?.result;
+  if (!pl || !Array.isArray(pl.tracks)) {
+    throw new Error(`歌单不存在或接口异常: ${playlistId}`);
+  }
+  const tracks: NeteasePlaylistTrack[] = pl.tracks.slice(0, limit).map((t: Record<string, unknown>) => ({
+    id: String(t.id),
+    name: String(t.name || "未知歌曲"),
+    artist: (t.artists as Array<{ name?: string }> | undefined)?.[0]?.name || "未知歌手",
+    album: (t.album as { name?: string } | undefined)?.name || "",
+    cover: (t.album as { picUrl?: string } | undefined)?.picUrl || "",
+    duration: typeof t.duration === "number" ? Math.round(t.duration / 1000) : undefined,
+  }));
+  return {
+    id: String(pl.id),
+    name: String(pl.name || "未知歌单"),
+    cover: String(pl.coverImgUrl || ""),
+    trackCount: Number(pl.trackCount) || tracks.length,
+    tracks,
   };
 }
 

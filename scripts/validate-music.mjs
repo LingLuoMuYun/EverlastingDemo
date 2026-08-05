@@ -16,10 +16,19 @@ if (!fs.existsSync(libraryPath)) {
 const library = JSON.parse(fs.readFileSync(libraryPath, "utf8"));
 const errors = [];
 
-if (library.version !== 1) errors.push(`version 应为 1，当前 ${library.version}`);
+if (library.version !== 2) errors.push(`version 应为 2，当前 ${library.version}`);
 if (!Array.isArray(library.tracks)) errors.push("tracks 应为数组");
 
 const ids = new Set();
+const collectionIds = new Set();
+for (const c of Array.isArray(library.collections) ? library.collections : []) {
+  if (!ID_RE.test(c.id)) errors.push(`${c.id}: 歌单 id 非法`);
+  if (collectionIds.has(c.id)) errors.push(`${c.id}: 歌单 id 重复`);
+  collectionIds.add(c.id);
+  if (!c.name) errors.push(`${c.id}: 歌单缺少 name`);
+  if (!Number.isInteger(c.order)) errors.push(`${c.id}: 歌单 order 应为整数`);
+}
+
 for (const t of library.tracks || []) {
   if (!ID_RE.test(t.id)) errors.push(`${t.id}: id 非法（仅允许小写字母/数字/中划线）`);
   if (ids.has(t.id)) errors.push(`${t.id}: id 重复`);
@@ -35,6 +44,15 @@ for (const t of library.tracks || []) {
   if (!t.title) errors.push(`${t.id}: 缺少 title`);
   if (!Number.isInteger(t.order)) errors.push(`${t.id}: order 应为整数`);
   if (!strict && !t.artist) errors.push(`${t.id}: 建议提供 artist`);
+  if (t.tags && !Array.isArray(t.tags)) errors.push(`${t.id}: tags 应为数组`);
+  if (t.duration !== undefined && (!Number.isFinite(t.duration) || t.duration <= 0)) {
+    errors.push(`${t.id}: duration 应为正数（秒）`);
+  }
+  if (Array.isArray(t.collectionIds)) {
+    for (const cid of t.collectionIds) {
+      if (!collectionIds.has(cid)) errors.push(`${t.id}: 引用不存在的歌单 ${cid}`);
+    }
+  }
 }
 
 if (errors.length) {
@@ -42,4 +60,4 @@ if (errors.length) {
   errors.forEach((e) => console.error(`  - ${e}`));
   process.exit(1);
 }
-console.log(`✓ 校验通过：${library.tracks?.length || 0} 首歌曲（${strict ? "strict" : "默认"}模式）`);
+console.log(`✓ 校验通过：${library.collections?.length || 0} 个歌单 / ${library.tracks?.length || 0} 首歌曲（${strict ? "strict" : "默认"}模式）`);
