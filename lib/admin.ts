@@ -58,9 +58,8 @@ export const ADMIN_MODULES: AdminModule[] = [
     title: "相册",
     href: "/admin/photos",
     icon: "Images",
-    description: "照片墙上传与排序",
-    stage: 2,
-    disabled: true,
+    description: "照片墙相册/照片上传与排序管理",
+    stage: 1,
   },
   {
     key: "settings",

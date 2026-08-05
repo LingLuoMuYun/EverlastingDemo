@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
-import { addPhoto, updatePhoto, movePhoto, removePhoto } from "../../../../lib/photos";
+import { addPhoto, updatePhoto, movePhoto, reorderPhotos, removePhoto } from "../../../../lib/photos";
 import { autopushPhotos } from "../../../../lib/autopush";
 
 const isProd = process.env.NODE_ENV === "production";
@@ -52,10 +52,16 @@ export async function PUT(req: NextRequest) {
   if (isProd) return forbidWrites();
   if (!checkAuth(req)) return NextResponse.json({ error: "未授权（EDITOR_TOKEN 不匹配）" }, { status: 401 });
   const body = await req.json().catch(() => null);
-  if (!body?.albumId || !body?.photoId) return NextResponse.json({ error: "缺少 albumId 或 photoId" }, { status: 400 });
+  if (!body?.albumId) return NextResponse.json({ error: "缺少 albumId" }, { status: 400 });
   try {
     const albumId = String(body.albumId);
-    const photoId = String(body.photoId);
+    if (Array.isArray(body.reorder)) {
+      reorderPhotos(albumId, body.reorder.map((x: unknown) => String(x)));
+      const push = await autopushPhotos(`chore(photos): 重排照片`);
+      return NextResponse.json({ albumId, reorder: body.reorder, push });
+    }
+    const photoId = String(body.photoId || "");
+    if (!photoId) return NextResponse.json({ error: "缺少 photoId" }, { status: 400 });
     if (body.move === -1 || body.move === 1) {
       movePhoto(albumId, photoId, body.move);
       const push = await autopushPhotos(`chore(photos): 移动照片`);

@@ -173,6 +173,14 @@ export function moveAlbum(id: string, dir: -1 | 1) {
   savePhotoLibrary({ ...library, albums });
 }
 
+/** 按给定 id 顺序整组重排相册（拖拽排序用，未知 id 保持原 order） */
+export function reorderAlbums(ids: string[]) {
+  const library = getPhotoLibrary();
+  const orderMap = new Map(ids.map((id, i) => [id, i + 1]));
+  const albums = library.albums.map((a) => (orderMap.has(a.id) ? { ...a, order: orderMap.get(a.id)! } : a));
+  savePhotoLibrary({ ...library, albums });
+}
+
 export function removeAlbum(id: string) {
   const library = getPhotoLibrary();
   const album = library.albums.find((a) => a.id === id);
@@ -243,6 +251,22 @@ export function movePhoto(albumId: string, photoId: string, dir: -1 | 1) {
         if (p.id === b.id) return { ...p, order: a.order };
         return p;
       }),
+    };
+  });
+  savePhotoLibrary({ ...library, albums });
+}
+
+/** 按给定 id 顺序整组重排相册内照片（拖拽排序用，未知 id 保持原 order） */
+export function reorderPhotos(albumId: string, photoIds: string[]) {
+  const library = getPhotoLibrary();
+  const album = library.albums.find((a) => a.id === albumId);
+  if (!album) throw new Error(`相册不存在: ${albumId}`);
+  const orderMap = new Map(photoIds.map((id, i) => [id, i + 1]));
+  const albums = library.albums.map((a) => {
+    if (a.id !== albumId) return a;
+    return {
+      ...a,
+      photos: a.photos.map((p) => (orderMap.has(p.id) ? { ...p, order: orderMap.get(p.id)! } : p)),
     };
   });
   savePhotoLibrary({ ...library, albums });

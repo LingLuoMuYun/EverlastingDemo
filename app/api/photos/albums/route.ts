@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
-import { addAlbum, updateAlbum, moveAlbum, removeAlbum, getPhotoLibrary } from "../../../../lib/photos";
+import { addAlbum, updateAlbum, moveAlbum, reorderAlbums, removeAlbum, getPhotoLibrary } from "../../../../lib/photos";
 import { autopushPhotos } from "../../../../lib/autopush";
 
 const isProd = process.env.NODE_ENV === "production";
@@ -54,8 +54,13 @@ export async function PUT(req: NextRequest) {
   if (isProd) return forbidWrites();
   if (!checkAuth(req)) return NextResponse.json({ error: "未授权（EDITOR_TOKEN 不匹配）" }, { status: 401 });
   const body = await req.json().catch(() => null);
-  if (!body?.id) return NextResponse.json({ error: "缺少 id" }, { status: 400 });
   try {
+    if (Array.isArray(body.reorder)) {
+      reorderAlbums(body.reorder.map((x: unknown) => String(x)));
+      const push = await autopushPhotos(`chore(photos): 重排相册`);
+      return NextResponse.json({ reorder: body.reorder, push });
+    }
+    if (!body?.id) return NextResponse.json({ error: "缺少 id" }, { status: 400 });
     const id = String(body.id);
     if (body.move === -1 || body.move === 1) {
       moveAlbum(id, body.move);

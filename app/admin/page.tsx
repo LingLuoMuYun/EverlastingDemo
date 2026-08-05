@@ -12,6 +12,7 @@ import {
 import { ADMIN_MODULES } from "../../lib/admin";
 import { getAllNotesMeta } from "../../lib/notes";
 import { getLibrary } from "../../lib/music";
+import { getPhotoLibrary } from "../../lib/photos";
 import { siteConfig } from "../../siteConfig";
 
 export const metadata = {
@@ -32,6 +33,7 @@ export default function AdminDashboardPage() {
   const counts: Record<string, number> = {
     notes: getAllNotesMeta({ includeDraft: true }).length,
     music: getLibrary().tracks.length,
+    photos: getPhotoLibrary().albums.reduce((n, a) => n + a.photos.length, 0),
   };
 
   return (
