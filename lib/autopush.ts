@@ -21,12 +21,12 @@ function runGit(cwd: string, args: string[]): Promise<string> {
 }
 
 /**
- * 本地编辑器保存后自动提交并推送：
- * - 只提交 notes/ 与 public/uploads/notes，不动其他工作区改动
+ * 本地后台保存后自动提交并推送指定目录：
+ * - 只提交 targets 内路径，不动其他工作区改动
  * - 仅本地开发生效（生产 Vercel 只读，永远返回失败说明）
  * - 环境变量 AUTO_PUSH=0 可关闭
  */
-export async function autopushNotes(message: string): Promise<PushResult> {
+export async function autopush(targets: string[], message: string): Promise<PushResult> {
   if (process.env.NODE_ENV === "production") {
     return { ok: false, committed: false, error: "生产环境不自动推送" };
   }
@@ -37,14 +37,12 @@ export async function autopushNotes(message: string): Promise<PushResult> {
   const run = async (): Promise<PushResult> => {
     try {
       const cwd = process.cwd();
-      const targets = ["notes", "public/uploads/notes"].filter((p) =>
-        fs.existsSync(path.join(cwd, p))
-      );
-      if (targets.length === 0) {
+      const existingTargets = targets.filter((p) => fs.existsSync(path.join(cwd, p)));
+      if (existingTargets.length === 0) {
         return { ok: false, committed: false, error: "没有可提交的目录" };
       }
 
-      await runGit(cwd, ["add", ...targets]);
+      await runGit(cwd, ["add", ...existingTargets]);
 
       // 无改动时 commit 会失败（nothing to commit），此时仍尝试 push 保持远端一致
       let committed = false;
@@ -74,4 +72,14 @@ export async function autopushNotes(message: string): Promise<PushResult> {
   const next = queue.then(run, run);
   queue = next.catch(() => undefined);
   return next;
+}
+
+/** 笔记编辑器：只提交 notes/ 与 public/uploads/notes */
+export function autopushNotes(message: string): Promise<PushResult> {
+  return autopush(["notes", "public/uploads/notes"], message);
+}
+
+/** 音乐管理后台：只提交 data/music 与 public/music */
+export function autopushMusic(message: string): Promise<PushResult> {
+  return autopush(["data/music", "public/music", "public/uploads/music"], message);
 }

@@ -9,6 +9,14 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  // 旧后台路由 301 到统一管理后台（沿用 posts→notes 的历史惯例）
+  async redirects() {
+    return [
+      { source: "/editor", destination: "/admin/notes", permanent: true },
+      { source: "/editor/new", destination: "/admin/notes/new", permanent: true },
+      { source: "/editor/:slug", destination: "/admin/notes/:slug", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;

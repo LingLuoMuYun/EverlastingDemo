@@ -46,6 +46,19 @@ export function isValidMusicId(id: string): boolean {
   return ID_RE.test(id);
 }
 
+/** 生成本地曲目 id：local-{yyyyMMdd}-{英文/数字 slug} */
+export function generateLocalId(title: string, date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const prefix = `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}`;
+  const slug =
+    String(title || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 40) || "track";
+  return `local-${prefix}-${slug}`;
+}
+
 /** 校验单条曲目，返回错误数组（空数组 = 合法） */
 export function validateTrack(track: MusicTrack): string[] {
   const errors: string[] = [];

@@ -70,11 +70,11 @@ const labelCls = "text-[10px] md:text-xs font-black text-slate-500 dark:text-sla
 
 export default function EditorClient(
   props:
-    | { mode: "list"; notes: NoteLike[]; autoPush?: boolean }
-    | { mode: "edit"; note: NoteLike | null; initialMtime?: number | null; allSlugs?: string[]; autoPush?: boolean }
+    | { mode: "list"; notes: NoteLike[]; autoPush?: boolean; embedded?: boolean }
+    | { mode: "edit"; note: NoteLike | null; initialMtime?: number | null; allSlugs?: string[]; autoPush?: boolean; embedded?: boolean }
 ) {
   if (props.mode === "list") {
-    return <EditorList notes={props.notes} autoPush={props.autoPush} />;
+    return <EditorList notes={props.notes} autoPush={props.autoPush} embedded={props.embedded} />;
   }
   return (
     <EditorForm
@@ -82,13 +82,14 @@ export default function EditorClient(
       initialMtime={props.initialMtime ?? null}
       allSlugs={props.allSlugs || []}
       autoPush={props.autoPush}
+      embedded={props.embedded}
     />
   );
 }
 
-function EditorList({ notes, autoPush }: { notes: NoteLike[]; autoPush?: boolean }) {
+function EditorList({ notes, autoPush, embedded }: { notes: NoteLike[]; autoPush?: boolean; embedded?: boolean }) {
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 sm:px-10 py-8 pt-24 md:pt-28 relative z-10">
+    <div className={`w-full max-w-5xl mx-auto px-4 sm:px-10 py-8 relative z-10 ${embedded ? "pt-2 md:pt-2" : "pt-24 md:pt-28"}`}>
       <div className="flex items-start justify-between mb-8 gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white tracking-tighter">本地编辑器</h1>
@@ -102,7 +103,7 @@ function EditorList({ notes, autoPush }: { notes: NoteLike[]; autoPush?: boolean
           )}
         </div>
         <Link
-          href="/editor/new"
+          href="/admin/notes/new"
           className="px-4 py-2.5 rounded-xl bg-indigo-500 text-white text-sm font-black shadow-lg hover:bg-indigo-600 transition-colors"
         >
           + 新建笔记
@@ -118,7 +119,7 @@ function EditorList({ notes, autoPush }: { notes: NoteLike[]; autoPush?: boolean
         {notes.map((note) => (
           <Link
             key={note.slug}
-            href={`/editor/${note.slug}`}
+            href={`/admin/notes/${note.slug}`}
             className="group rounded-2xl bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-white/40 dark:border-white/10 shadow-md hover:shadow-xl transition-all p-4 md:p-5 flex items-center gap-4"
           >
             <span className="w-2 h-2 shrink-0 rounded-full bg-indigo-500"></span>
@@ -148,7 +149,7 @@ function EditorList({ notes, autoPush }: { notes: NoteLike[]; autoPush?: boolean
   );
 }
 
-function EditorForm({ note, initialMtime, allSlugs, autoPush }: { note: NoteLike | null; initialMtime: number | null; allSlugs: string[]; autoPush?: boolean }) {
+function EditorForm({ note, initialMtime, allSlugs, autoPush, embedded }: { note: NoteLike | null; initialMtime: number | null; allSlugs: string[]; autoPush?: boolean; embedded?: boolean }) {
   const router = useRouter();
   const { showToast } = useToast();
   const isNew = !note;
@@ -299,7 +300,7 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush }: { note: NoteLike
       } else {
         showToast(isNew ? "已创建笔记（记得 git push 发布）" : "已保存（记得 git push 发布）", "success");
       }
-      router.push("/editor");
+      router.push("/admin/notes");
       router.refresh();
     } finally {
       setSaving(false);
@@ -325,7 +326,7 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush }: { note: NoteLike
     try {
       if (isNew) {
         localStorage.removeItem(storageKey);
-        router.push("/editor");
+        router.push("/admin/notes");
         return;
       }
       const res = await fetch(`/api/notes?slug=${encodeURIComponent(slug)}`, { method: "DELETE", headers: authHeaders() });
@@ -338,7 +339,7 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush }: { note: NoteLike
       if (data.push?.ok) showToast("已删除并推送到 GitHub", "success");
       else if (data.push && !data.push.ok) showToast(`已删除，但推送失败：${data.push.error || "未知错误"}`, "error");
       else showToast("已删除", "success");
-      router.push("/editor");
+      router.push("/admin/notes");
       router.refresh();
     } finally {
       setDeleting(false);
@@ -414,13 +415,13 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush }: { note: NoteLike
   };
 
   const backLink = (
-    <Link href="/editor" className="text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+    <Link href="/admin/notes" className="text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
       ← 返回列表
     </Link>
   );
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-8 pt-24 md:pt-28 relative z-10">
+    <div className={`w-full max-w-6xl mx-auto px-4 sm:px-8 py-8 relative z-10 ${embedded ? "pt-2 md:pt-2" : "pt-24 md:pt-28"}`}>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           {backLink}
