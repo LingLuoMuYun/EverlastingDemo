@@ -7,7 +7,7 @@
 ## ✨ 功能特性
 
 - 🧭 **统一「杂谈」内容模块**：文章（`article`）/ 杂谈（`talk`）/ 说说（`moment`）三合一，`/notes` 列表按类型 Tab 筛选 + 搜索 + 标签过滤，详情页按类型渲染（文章 TOC、杂谈心情、说说定位/图片灯箱）
-- ✏️ **本地编辑器**：`/editor` 双栏写作（Markdown 源码 + 实时预览），元数据表单、草稿、自动保存、Ctrl+S、slug 自动生成、冲突检测、图片栏（文件选择/粘贴/拖拽上传）、保存后自动推送 GitHub
+- ✏️ **统一管理后台**：`/admin` 聚合笔记编辑器（`/admin/notes`，原 `/editor*` 301）与音乐曲库管理（`/admin/music`，本地音频上传 + 网易云 ID 导入）；笔记双栏写作（Markdown 源码 + 实时预览）、草稿、自动保存、Ctrl+S、slug 自动生成、冲突检测、图片栏（文件选择/粘贴/拖拽上传），保存后自动推送 GitHub
 - 🎨 毛玻璃设计系统 + 暗/亮主题 + 流动渐变背景
 - 🎵 网易云音乐播放器（云播放、歌词、黑胶动画）
 - ❄️ 和风天气挂件 + 天气特效
@@ -66,13 +66,13 @@ draft: false                # true = 前台不可见（草稿）
 **两种写作方式（结果完全等价）**：
 
 1. **手改 Markdown**：直接编辑 `notes/` 下的 `.md` 文件；
-2. **本地编辑器**：`npm run dev` 后打开 `/editor`，新建/编辑/删除笔记，保存即写回 `notes/*.md`。
+2. **本地编辑器**：`npm run dev` 后打开统一管理后台 `/admin`（笔记入口 `/admin/notes`，原 `/editor*` 自动 301），新建/编辑/删除笔记，保存即写回 `notes/*.md`。
    - 保存后会自动 `git commit + push` 到 GitHub（可用 `AUTO_PUSH=0` 关闭），发布即完成。
    - 图片栏支持从文件管理器选择、拖拽、或直接 `Ctrl+V` 粘贴截图，图片自动存到 `public/uploads/notes/` 并随推送发布。
 
 发布流程：`git add . && git commit -m "更新笔记" && git push` → Vercel 自动构建部署。
 
-> ⚠️ 编辑器仅本地开发可用：Vercel 生产环境文件系统只读，线上 `/editor` 会显示只读提示。
+> ⚠️ 管理后台仅本地开发可用：Vercel 生产环境文件系统只读，线上 `/admin*` 会显示只读提示。
 
 ## 🗺 路由一览
 
@@ -81,7 +81,7 @@ draft: false                # true = 前台不可见（草稿）
 | `/` | 首页（个人名片、笔记轮播、最新动态、照片墙、音乐、天气） |
 | `/notes` | 「杂谈」统一列表（kind Tab + 搜索 + 标签） |
 | `/notes/[slug]` | 笔记详情（按 kind 条件渲染） |
-| `/editor` `/editor/new` `/editor/[slug]` | 本地编辑器（列表 / 新建 / 编辑） |
+| `/admin` `/admin/notes` `/admin/music` | 统一管理后台（仅本地）：总览 / 笔记（原 `/editor*` 301）/ 音乐曲库管理 |
 | `/api/notes` `/api/notes/render` | 编辑器读写接口（生产只读） |
 | `/timeline` | 归档（年月 + 标签 + kind 筛选） |
 | `/photowall` `/music` `/friends` `/projects` `/about` | 照片墙 / 音乐 / 友链 / 项目 / 关于 |
@@ -116,6 +116,7 @@ node scripts/migrate-notes.mjs             # 执行迁移（幂等）
 | 文档 | 说明 |
 |------|------|
 | [内容整合企划书](docs/exp/EverlastingDemo-内容整合企划书-杂谈统一模块.md) | 「杂谈」统一内容模块 + 本地编辑器的完整方案（含实施状态） |
+| [统一管理后台与音乐模块优化实现策略](docs/exp/EverlastingDemo-统一管理后台与音乐模块优化实现策略.md) | 统一 `/admin` 后台（笔记+音乐模块）+ 音乐曲库管理 + 播放器优化 + 音量键调试专项 |
 | [可复现高还原项目实现指南](docs/exp/EverlastingDemo-可复现高还原项目实现指南.md) | 从 0 到 1 搭建指南（0-6 阶段） |
 | [独立前端实现策略技术文档](docs/exp/EverlastingDemo-独立前端实现策略技术文档-优化版.md) | 技术蓝图（路由、内容模型、API、样式系统） |
 | [审核报告与优化实现计划](docs/exp/EverlastingDemo-审核报告与优化实现计划-优化版.md) | 多轮源码复核与优化计划 |
