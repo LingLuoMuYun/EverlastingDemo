@@ -13,6 +13,19 @@
       "draft": false,
       "createdAt": "2026-08-05T17:13:47.623Z",
       "updatedAt": "2026-08-05T17:13:47.623Z"
+    },
+    {
+      "id": "friend-20260806-mshcev0b",
+      "name": "微光拾级",
+      "url": "https://vow0328.github.io",
+      "description": "嵌入式之神kk的个人博客",
+      "avatar": "",
+      "themeColor": "",
+      "status": "online",
+      "order": 2,
+      "draft": false,
+      "createdAt": "2026-08-06T09:58:09.275Z",
+      "updatedAt": "2026-08-06T09:58:09.275Z"
     }
   ]
 }
