@@ -26,6 +26,19 @@
       "draft": false,
       "createdAt": "2026-08-06T09:58:09.275Z",
       "updatedAt": "2026-08-06T09:58:09.275Z"
+    },
+    {
+      "id": "friend-20260806-mshcjllu",
+      "name": "萌神小天",
+      "url": "https://www.msxiaotian.top/",
+      "description": "游戏开发之神——小天的博客",
+      "avatar": "",
+      "themeColor": "",
+      "status": "online",
+      "order": 3,
+      "draft": false,
+      "createdAt": "2026-08-06T10:01:50.370Z",
+      "updatedAt": "2026-08-06T10:01:50.370Z"
     }
   ]
 }
