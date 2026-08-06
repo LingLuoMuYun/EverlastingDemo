@@ -15,7 +15,9 @@ import { getLibrary } from "../../lib/music";
 import { getPhotoLibrary } from "../../lib/photos";
 import { getProjects } from "../../lib/projects";
 import { getFriends } from "../../lib/friends";
-import { siteConfig } from "../../siteConfig";
+import { getSiteConfig } from "../../lib/site";
+
+const siteConfig = getSiteConfig();
 
 export const metadata = {
   title: "管理后台 | " + siteConfig.title,

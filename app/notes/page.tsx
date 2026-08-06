@@ -2,7 +2,9 @@ import Navbar from "../../components/Navbar";
 import PageTransition from "../../components/PageTransition";
 import NoteBoard from "../../components/NoteBoard";
 import { getAllNotesMeta } from "../../lib/notes";
-import { siteConfig } from "../../siteConfig";
+import { getSiteConfig } from "../../lib/site";
+
+const siteConfig = getSiteConfig();
 
 export const metadata = {
   title: "杂谈 | " + siteConfig.title,

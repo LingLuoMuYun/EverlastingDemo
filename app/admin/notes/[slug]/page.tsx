@@ -3,7 +3,9 @@ import PageTransition from "../../../../components/PageTransition";
 import EditorClient from "../../../../components/EditorClient";
 import { ToastProvider } from "../../../../components/ToastProvider";
 import { getAllNotesMeta, getNote, getNoteMtime } from "../../../../lib/notes";
-import { siteConfig } from "../../../../siteConfig";
+import { getSiteConfig } from "../../../../lib/site";
+
+const siteConfig = getSiteConfig();
 
 export const metadata = {
   title: "编辑笔记 | " + siteConfig.title,

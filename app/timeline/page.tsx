@@ -1,11 +1,13 @@
 import Navbar from '../../components/Navbar';
 import PageTransition from '../../components/PageTransition';
-import { siteConfig } from '../../siteConfig';
 import TimelineClient from '../../components/TimelineClient';
 import { getAllNotesMeta } from '../../lib/notes';
+import { getSiteConfig } from '../../lib/site';
 import type { TimelinePost } from '../../lib/types';
 // 🌟 1. 引入 ToastProvider 喵！
 import { ToastProvider } from '../../components/ToastProvider';
+
+const siteConfig = getSiteConfig();
 
 export const metadata = {
   title: "归档与探索 | " + siteConfig.title,

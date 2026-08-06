@@ -5,12 +5,15 @@ import "./globals.css";
 import { ThemeProvider } from "../components/ThemeProvider";
 import { MusicProvider } from "../components/MusicProvider";
 import { ToastProvider } from "../components/ToastProvider";
+import { SiteConfigProvider } from "../components/SiteConfigProvider";
 import FloatingPlayer from "../components/FloatingPlayer";
-import { siteConfig } from "../siteConfig";
+import { getSiteConfig } from "../lib/site";
 import BackgroundSlider from "../components/BackgroundSlider";
 import SplashScreen from "../components/SplashScreen";
 
 import MobileBackButton from '../components/MobileBackButton';
+
+const siteConfig = getSiteConfig();
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -60,12 +63,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
 
       <body className="w-screen overflow-x-hidden min-h-full flex flex-col relative transition-colors duration-1000 bg-slate-50 dark:bg-slate-950 font-serif">
         <ThemeProvider>
+          <SiteConfigProvider>
 
-          <SplashScreen />
+            <SplashScreen />
 
-          <ToastProvider>
-          <MusicProvider>
-          <div id="app-mount-root" className="flex-1 flex flex-col transition-opacity duration-1000">
+            <ToastProvider>
+            <MusicProvider>
+            <div id="app-mount-root" className="flex-1 flex flex-col transition-opacity duration-1000">
             <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden">
               {!siteConfig.useGradient && <BackgroundSlider />}
               <div className="absolute inset-0 z-[-9] bg-white/30 dark:bg-slate-900/40 backdrop-blur-md transition-colors duration-1000"></div>
@@ -104,8 +108,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               100% { background-position: 0% 50%; } 
             }
           `}} />
-          </MusicProvider>
-          </ToastProvider>
+            </MusicProvider>
+            </ToastProvider>
+
+          </SiteConfigProvider>
 
         </ThemeProvider>
       </body>

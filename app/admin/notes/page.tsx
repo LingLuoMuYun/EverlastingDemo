@@ -2,7 +2,9 @@ import PageTransition from "../../../components/PageTransition";
 import EditorClient from "../../../components/EditorClient";
 import { ToastProvider } from "../../../components/ToastProvider";
 import { getAllNotesMeta } from "../../../lib/notes";
-import { siteConfig } from "../../../siteConfig";
+import { getSiteConfig } from "../../../lib/site";
+
+const siteConfig = getSiteConfig();
 
 export const metadata = {
   title: "笔记管理 | " + siteConfig.title,

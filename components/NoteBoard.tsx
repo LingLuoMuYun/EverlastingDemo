@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { KIND_LABELS, type NoteKind } from "../lib/types";
-import { siteConfig } from "../siteConfig";
+import { useSiteConfig } from "./SiteConfigProvider";
 
 type Note = {
   slug: string;
@@ -35,6 +35,7 @@ function displayTitle(note: Note): string {
 }
 
 export default function NoteBoard({ notes, initialKind }: { notes: Note[]; initialKind?: string }) {
+  const siteConfig = useSiteConfig();
   const router = useRouter();
   const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");

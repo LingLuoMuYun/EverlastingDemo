@@ -1,5 +1,7 @@
 import PhotoAdminClient from "../../../components/PhotoAdminClient";
-import { siteConfig } from "../../../siteConfig";
+import { getSiteConfig } from "../../../lib/site";
+
+const siteConfig = getSiteConfig();
 
 export const metadata = {
   title: "照片墙管理 | " + siteConfig.title,

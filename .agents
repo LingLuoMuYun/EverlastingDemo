@@ -44,10 +44,14 @@
 app/           # App Router 路由（notes、editor、timeline、photowall、music 等）
 components/    # UI 组件（客户端组件为主）
 lib/           # 核心逻辑：notes.ts（笔记读取）、markdown.ts（渲染）、types.ts
-data/          # 静态数据：相册 / 友链 / 项目
+data/          # 静态数据：相册 / 友链 / 项目 / 站点配置（data/site/config.json，默认值在 siteConfig.ts）
 scripts/       # 工具脚本：笔记校验、旧目录迁移
 notes/*.md     # 全部内容，文件名即 slug
 ```
+
+站点配置：后台 `/admin/settings` 修改的字段写入 `data/site/config.json`（覆盖层），
+读取时与 `siteConfig.ts` 默认值深合并；字段白名单与校验见 `lib/site-schema.ts` / `lib/site.ts`，
+新增可编辑字段需同步更新 `scripts/validate-site.mjs`。
 
 笔记 frontmatter 必须包含 `kind`（`article`=文章 / `talk`=杂谈，原「说说」已并入杂谈）与 `date`；可选 `title`（杂谈可省略，展示时取正文首行）、`description`、`cover`、`tags`、`mood`、`location`、`draft`、`updated`。slug 仅允许小写字母 / 数字 / 中划线；`draft: true` 的笔记前台不可见。
 

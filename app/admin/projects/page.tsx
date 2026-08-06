@@ -1,5 +1,7 @@
 import ProjectsAdminClient from "../../../components/ProjectsAdminClient";
-import { siteConfig } from "../../../siteConfig";
+import { getSiteConfig } from "../../../lib/site";
+
+const siteConfig = getSiteConfig();
 
 export const metadata = {
   title: "项目管理 | " + siteConfig.title,

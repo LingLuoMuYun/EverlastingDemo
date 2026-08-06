@@ -64,8 +64,7 @@ export const ADMIN_MODULES: AdminModule[] = [
     title: "站点配置",
     href: "/admin/settings",
     icon: "Settings",
-    description: "siteConfig 只读展示",
-    stage: 3,
-    disabled: true,
+    description: "站点基础信息与外观配置",
+    stage: 2,
   },
 ];

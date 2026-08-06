@@ -1,8 +1,9 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { siteConfig } from '../siteConfig';
+import { useSiteConfig } from './SiteConfigProvider';
 
 export default function BackgroundSlider() {
+  const siteConfig = useSiteConfig();
   const [index, setIndex] = useState(0);
   const images = siteConfig.bgImages;
 

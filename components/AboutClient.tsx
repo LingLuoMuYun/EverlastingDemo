@@ -3,7 +3,7 @@
 import { useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity } from 'lucide-react';
-import { siteConfig } from '../siteConfig';
+import { useSiteConfig } from './SiteConfigProvider';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import FriendsBoard from '../app/about/FriendsBoard';
@@ -35,6 +35,7 @@ export default function AboutClient({
     status?: "online" | "offline";
   }[]
 }) {
+  const siteConfig = useSiteConfig();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();

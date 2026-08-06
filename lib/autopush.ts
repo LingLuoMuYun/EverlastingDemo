@@ -103,3 +103,8 @@ export function autopushProjects(message: string): Promise<PushResult> {
 export function autopushFriends(message: string): Promise<PushResult> {
   return autopush(["data/friends"], message);
 }
+
+/** 站点配置管理后台：只提交 data/site */
+export function autopushSite(message: string): Promise<PushResult> {
+  return autopush(["data/site"], message);
+}

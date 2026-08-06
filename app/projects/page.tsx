@@ -1,8 +1,10 @@
 import Navbar from '../../components/Navbar';
 import PageTransition from '../../components/PageTransition';
 import ProjectsBoard from './ProjectsBoard';
-import { siteConfig } from "@/siteConfig";
+import { getSiteConfig } from "@/lib/site";
 import { getPublicProjects } from "../../lib/projects";
+
+const siteConfig = getSiteConfig();
 
 export const metadata = {
   title: "项目矩阵 | " + siteConfig.title,

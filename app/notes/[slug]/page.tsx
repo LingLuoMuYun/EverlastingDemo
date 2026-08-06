@@ -11,7 +11,9 @@ import ProseStyles from "../../../components/ProseStyles";
 import { getAllNotesMeta, getNote } from "../../../lib/notes";
 import { renderMarkdown, extractToc } from "../../../lib/markdown";
 import { KIND_LABELS } from "../../../lib/types";
-import { siteConfig } from "../../../siteConfig";
+import { getSiteConfig } from "../../../lib/site";
+
+const siteConfig = getSiteConfig();
 
 export async function generateStaticParams() {
   return getAllNotesMeta().map((n) => ({ slug: n.slug }));
