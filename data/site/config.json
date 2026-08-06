@@ -1,5 +1,31 @@
 {
   "version": 1,
-  "updatedAt": "2026-08-06T08:13:50.892Z",
-  "values": {}
+  "updatedAt": "2026-08-06T08:16:11.822Z",
+  "values": {
+    "title": "EverlastingDemo",
+    "authorName": "泠落",
+    "bio": "街喧闹，人过往，且记曾相识，不为少年留",
+    "avatarUrl": "/avatar.jpg",
+    "faviconUrl": "/favicon.ico",
+    "navTitle": "泠落",
+    "navSuffix": "の",
+    "navAfter": "小屋",
+    "useGradient": true,
+    "themeColors": [
+      "#a18cd1",
+      "#fbc2eb",
+      "#a1c4fd",
+      "#c2e9fb"
+    ],
+    "bgImages": [
+      "/bg-poke.jpeg"
+    ],
+    "social": {
+      "github": "https://github.com/LingLuoMuYun",
+      "email": "muyunliqiu@gmail.com",
+      "qq": "1603728172"
+    },
+    "chatterTitle": "云端杂谈",
+    "chatterDescription": "碎片记录"
+  }
 }
