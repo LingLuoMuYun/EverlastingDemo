@@ -1,30 +1,45 @@
-# EverlastingDemo
+# EverlastingDemo · 泠落的小屋
 
-泠落的个人博客 —— 基于 **Next.js 16 + React 19 + Tailwind CSS v4** 的高颜值毛玻璃（Glassmorphism）风格站点。
+一个"文件即内容"的个人博客 / 个人主页 —— 高颜值毛玻璃（Glassmorphism）设计，文章、杂谈、音乐、照片、时间线一站式呈现。
 
-内容采用"文件即内容"模式：文章 / 杂谈统一存放在 `notes/*.md`（原「说说」已并入杂谈），无数据库；写作支持**手改 Markdown** 与**本地编辑器**双路径，修改后 `git push` 即自动部署（GitHub + Vercel）。
+基于 **Next.js 16 + React 19 + Tailwind CSS v4** 构建；所有内容都是仓库里的 Markdown / JSON 文件，没有数据库。写作、改版、发布全部通过 Git 完成。
 
-## ✨ 功能特性
+## ✨ 功能亮点
 
-- 🧭 **统一「杂谈」内容模块**：文章（`article`）/ 杂谈（`talk`）两种类型（原「说说」已并入杂谈），`/notes` 列表按类型 Tab 筛选 + 搜索 + 标签过滤，详情页按类型渲染（文章 TOC、杂谈心情/定位）
-- ✏️ **统一管理后台**：`/admin` 聚合笔记编辑器（`/admin/notes`，原 `/editor*` 301）与音乐曲库管理（`/admin/music`：本地音频上传 + 网易云 ID/歌单导入 + 歌单分组/标签/批量管理）；笔记双栏写作（Markdown 源码 + 实时预览）、草稿、自动保存、Ctrl+S、slug 自动生成、冲突检测、图片栏（文件选择/粘贴/拖拽上传），保存后自动推送 GitHub
-- 🎨 毛玻璃设计系统 + 暗/亮主题 + 流动渐变背景
-- 🎵 网易云音乐播放器（云播放、歌词、黑胶动画）
-- ❄️ 和风天气挂件 + 天气特效
-- 📷 照片墙（相册 + 灯箱）、项目展示、归档时间线、关于页（含友链 Tab）
-- 🔍 全站搜索（覆盖全部笔记）
-- 🧹 内容统一：仅保留 `/notes` 单一内容模块（旧 `posts/` `chatters/` `moments/` 目录与旧路由已删除）
+**📝 统一内容体系（文章 / 杂谈）**
+
+- 全部内容以 `notes/*.md` 文件存储，frontmatter 区分「文章」与「杂谈」，文件名即 slug
+- `/notes` 列表支持类型 Tab、搜索、标签过滤；详情页按类型差异化渲染（文章自动生成目录 TOC，杂谈展示心情 / 定位）
+- 支持 GFM、KaTeX 数学公式、代码高亮，并自动处理外链图床防盗链
+
+**🛠 本地管理后台（Git 即 CMS）**
+
+- 双栏写作：Markdown 源码 + 实时预览，草稿自动保存、Ctrl+S、slug 自动生成、mtime 冲突检测
+- 图片一键上传：文件选择 / 拖拽 / Ctrl+V 粘贴截图，自动存入 `public/uploads/notes/`
+- 保存后自动 `git commit + push`，发布即完成；可用 `AUTO_PUSH=0` 关闭
+- 后台还覆盖音乐曲库、照片、项目、友链的管理
+
+**🎵 云音乐播放器**
+
+- 网易云音乐接入：单曲 / 歌单导入（自动抓取歌词并去重入库），也支持本地音频上传
+- 黑胶唱片旋转动画、逐字歌词、浮动迷你播放器、Media Session 系统媒体控制
+- 音量精细化：滚轮调节 + Shift 微调 + 快捷键，百分比显示并持久化
+
+**🏠 个人主页其余模块**
+
+- 照片墙（相册 + 灯箱预览）、项目展示、归档时间线（年月 / 标签 / 类型筛选）、友链
+- 和风天气挂件 + 天气特效、暗 / 亮主题、流动渐变 / 图片背景、页面切换动画
 
 ## 🛠 技术栈
 
-| 类别 | 技术 |
+| 类别 | 选型 |
 |------|------|
 | 框架 | Next.js 16（App Router）+ React 19 + TypeScript 5 |
 | 样式 | Tailwind CSS v4 + @tailwindcss/typography |
-| 内容 | gray-matter + unified / remark / rehype（GFM、KaTeX、highlight.js） |
+| 内容 | gray-matter + unified / remark / rehype |
 | 动画 | Framer Motion |
 | 图标 | lucide-react |
-| 部署 | GitHub + Vercel（SSR / SSG） |
+| 部署 | GitHub + Vercel（静态预渲染 SSG） |
 
 ## 🚀 快速开始
 
@@ -34,103 +49,44 @@ npm run dev
 # 打开 http://localhost:3000
 ```
 
-可选环境变量（复制 `.env.example` 为 `.env.local`）：
+可选环境变量见 `.env.example`（天气密钥、编辑器鉴权、自动推送开关等）。
 
-| 变量 | 说明 |
-|------|------|
-| `QWEATHER_KEY` | 和风天气密钥（天气挂件，可选） |
-| `EDITOR_TOKEN` | 本地编辑器鉴权（可选；开启后请求需带 `Authorization: Bearer <token>`） |
-| `AUTO_PUSH` | 本地编辑器保存后自动 `git commit + push`（默认开；置 `0` 关闭；生产始终关闭） |
-| `MUSIC_MAX_MB` | 音乐管理本地音频上传大小上限（MB，默认 50） |
-| `MUSIC_COMMIT_FILES` | 音乐管理本地音频是否随 git 提交（默认 `1` 入库；置 `0` 不入库，生产需另行上传） |
+## 🧱 项目结构
 
-## ✍️ 写作：内容模型
-
-所有内容统一存放在 `notes/*.md`，文件名即 slug（仅小写字母/数字/中划线），类型由 frontmatter `kind` 区分：
-
-```markdown
----
-kind: article          # article=文章 / talk=杂谈（说说已并入杂谈）
-title: "你好，世界"
-date: 2026-08-04 22:30
-updated: 2026-08-05 10:00  # 编辑器保存时自动更新
-description: "摘要（可选，缺省取正文前 100 字）"
-cover: https://...          # 封面（可选）
-tags: [博客, 开始]          # 可选
-mood: "开心"                # 杂谈 可选
-location: "北京"            # 杂谈 可选
-draft: false                # true = 前台不可见（草稿）
----
-
-正文 Markdown...
+```text
+app/           # 页面与 API 路由（notes / admin / music / photowall / timeline ...）
+components/    # UI 组件（播放器、编辑器、照片墙、天气等）
+lib/           # 核心逻辑（笔记读写、Markdown 渲染、网易云导入、自动推送）
+data/          # 静态数据（音乐曲库、相册、项目、友链）
+notes/*.md     # 全部文章与杂谈，文件名即 slug
+scripts/       # 校验 / 迁移工具脚本
 ```
 
-**两种写作方式（结果完全等价）**：
+## 💡 实现细节
 
-1. **手改 Markdown**：直接编辑 `notes/` 下的 `.md` 文件；
-2. **本地编辑器**：`npm run dev` 后打开统一管理后台 `/admin`（笔记入口 `/admin/notes`，原 `/editor*` 自动 301），新建/编辑/删除笔记，保存即写回 `notes/*.md`。
-   - 保存后会自动 `git commit + push` 到 GitHub（可用 `AUTO_PUSH=0` 关闭），发布即完成。
-   - 图片栏支持从文件管理器选择、拖拽、或直接 `Ctrl+V` 粘贴截图，图片自动存到 `public/uploads/notes/` 并随推送发布。
+**文件即内容，Git 即 CMS**
 
-发布流程：`git add . && git commit -m "更新笔记" && git push` → Vercel 自动构建部署。
+- 全站无数据库：笔记是 `notes/*.md`，音乐 / 照片 / 项目 / 友链是 `data/` 下的 JSON
+- 前台读取带 60s TTL 缓存，编辑器保存后主动失效；`notes/[slug]` 使用 `generateStaticParams` 构建期预渲染，配合 `generateMetadata` 输出 SEO 元信息
+- 自动推送模块串行化执行 `git add → commit → push`，只提交任务相关目录，避免并发保存时的 `index.lock` 冲突
 
-> ⚠️ 管理后台仅本地开发可用：Vercel 生产环境文件系统只读，线上 `/admin*` 会显示只读提示。
+**Markdown 渲染管线**
 
-## 🗺 路由一览
+- unified + remark / rehype 插件链：GFM 表格 / 任务列表、KaTeX 公式、highlight.js 代码高亮
+- 自定义预处理：统一换行、数字列表补空格、代码块保护、正文空行转 `<br>`
+- 内置 rehype 插件为所有外链图片加 `referrerPolicy="no-referrer"`，解决图床防盗链不显示问题
 
-| 路由 | 说明 |
-|------|------|
-| `/` | 首页（个人名片、笔记轮播、最新动态、照片墙、音乐、天气） |
-| `/notes` | 「杂谈」统一列表（kind Tab + 搜索 + 标签） |
-| `/notes/[slug]` | 笔记详情（按 kind 条件渲染） |
-| `/admin` `/admin/notes` `/admin/music` | 统一管理后台（仅本地）：总览 / 笔记（原 `/editor*` 301）/ 音乐曲库管理 |
-| `/api/notes` `/api/notes/render` | 编辑器读写接口（生产只读） |
-| `/timeline` | 归档（年月 + 标签 + kind 筛选） |
-| `/photowall` `/music` `/projects` `/about` | 照片墙 / 音乐 / 项目 / 关于（自我介绍 / 研究动态 / 友链） |
+**编辑器体验**
 
-旧路由 `/posts/*`、`/chatter*`、`/moments` 已删除，404 由统一 404 页兜底；所有内容统一在 `/notes`。友链模块已并入关于页（`/about?tab=friends`），旧入口 `/friends` 301 跳转。
+- 防抖自动保存草稿到 localStorage，刷新不丢稿；保存成功即清理
+- 通过文件 mtime 检测多人 / 多端编辑冲突，避免互相覆盖
+- 图片上传接口将截图 / 拖拽文件落盘到 `public/uploads/notes/` 并在光标处插入 Markdown
 
-## 📦 常用命令
+**音乐系统**
 
-```bash
-npm run dev                 # 本地开发
-npm run build               # 生产构建
-npm run start               # 生产运行
-npm run lint                # 代码检查
-node scripts/validate-notes.mjs            # 校验 notes/ frontmatter
-node scripts/validate-music.mjs            # 校验 data/music/library.json 结构与本地文件
-node scripts/migrate-notes.mjs --dry-run   # 旧目录（posts/chatters/moments）迁移预演
-node scripts/migrate-notes.mjs             # 执行迁移（幂等）
-```
+- 网易云歌单导入：逐首抓取歌词（LRC / 翻译），按网易云 ID 去重，支持自定义标签与歌单分组
+- 播放器支持缓冲进度、播放列表、上一首 / 下一首、滚动 / 快捷键调音量，并接入系统 Media Session
 
 ## ☁️ 部署
 
-1. 推送到 GitHub 仓库 `LingLuoMuYun/EverlastingDemo`；
-2. Vercel → Import 仓库 → Framework 自动识别 Next.js；
-3. 配置环境变量（`QWEATHER_KEY` 可选）；
-4. Deploy；之后每次 `git push` 自动重新构建。
-
-渲染说明：`/notes/[slug]` 使用 `generateStaticParams` 构建期预渲染；新增笔记需重新构建（push 触发）后上线。
-
-## 📚 文档索引
-
-技术文档位于 `docs/exp/`：
-
-| 文档 | 说明 |
-|------|------|
-| [内容整合企划书](docs/exp/EverlastingDemo-内容整合企划书-杂谈统一模块.md) | 「杂谈」统一内容模块 + 本地编辑器的完整方案（含实施状态） |
-| [统一管理后台与音乐模块优化实现策略](docs/exp/EverlastingDemo-统一管理后台与音乐模块优化实现策略.md) | 统一 `/admin` 后台（笔记+音乐模块）+ 音乐曲库管理 + 播放器优化 + 音量键调试专项 |
-| [可复现高还原项目实现指南](docs/exp/EverlastingDemo-可复现高还原项目实现指南.md) | 从 0 到 1 搭建指南（0-6 阶段） |
-| [独立前端实现策略技术文档](docs/exp/EverlastingDemo-独立前端实现策略技术文档-优化版.md) | 技术蓝图（路由、内容模型、API、样式系统） |
-| [审核报告与优化实现计划](docs/exp/EverlastingDemo-审核报告与优化实现计划-优化版.md) | 多轮源码复核与优化计划 |
-| [XHBlogs 项目分析指南](docs/exp/XHBlogs-项目分析指南.md) | 参考项目 XHBlogs 的历史分析 |
-
-## 📝 版本记录
-
-| 版本 | 日期 | 说明 |
-|------|------|------|
-| init | 2026-08-04 | EverlastingDemo 初始化（Next.js 16 + React 19 + Tailwind v4） |
-| 0.2.0 | 2026-08-05 | 内容整合：统一「杂谈」模块（notes/ + kind）、本地编辑器、旧路由 301、音乐/天气组件 |
-| 0.3.0 | 2026-08-05 | 深链（/notes?kind=、/timeline?kind=&tag=）；删除旧目录/旧路由与 301；修复图床防盗链图片不显示；编辑器本地图片上传 |
-| 0.4.0 | 2026-08-05 | 编辑器：新建默认当前本地时间 + 「现在」按钮；图片栏（选择/粘贴/拖拽/缩略图插入）；保存后自动推送 GitHub |
-| 0.5.0 | 2026-08-06 | 类型精简：说说（moment）并入杂谈（talk），全站仅保留文章/杂谈两种类型 |
+推送到 GitHub 后由 Vercel 自动构建部署，每次 `git push` 即触发更新。管理后台仅本地开发可用（生产环境文件系统只读，会显示只读提示）。
