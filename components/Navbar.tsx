@@ -13,6 +13,10 @@ export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
 
+  // 嵌套路由（如 /toolbox/todos）也高亮父级入口（如 工具箱）
+  const isActiveLink = (href: string) =>
+    pathname === href || (href !== "/" && pathname.startsWith(href + "/"));
+
   // --- 🌟 物理引擎：菜单转动逻辑 ---
   const wheelRef = useRef<HTMLDivElement>(null);
   const rawRotation = useMotionValue(0);
@@ -93,11 +97,10 @@ export default function Navbar() {
           <nav className="flex gap-8 text-sm font-bold">
             {/* PC端依然使用全量的 navLinks */}
             {navLinks.map((link) => {
-              const isActive = pathname === link.href || pathname === `${link.href}/`;
               return (
-                <Link key={link.href} href={link.href} className={`relative py-1 transition-colors ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-200 hover:text-indigo-600'}`}>
+                <Link key={link.href} href={link.href} className={`relative py-1 transition-colors ${isActiveLink(link.href) ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-200 hover:text-indigo-600'}`}>
                   {link.name}
-                  {isActive && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-indigo-500 rounded-full animate-pulse"></span>}
+                  {isActiveLink(link.href) && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-indigo-500 rounded-full animate-pulse"></span>}
                 </Link>
               );
             })}
@@ -160,7 +163,6 @@ export default function Navbar() {
 
           {/* 🌟 手机端轮盘渲染 */}
                 {navLinks.map((link, index) => {
-                    const isActive = pathname === link.href || pathname === `${link.href}/`;
                     // 🌟 角度计算也会基于过滤后的长度，保证图标自动均匀排布！
                 const angle = index * (360 / navLinks.length);
 
@@ -177,7 +179,7 @@ export default function Navbar() {
                             href={link.href}
                             onClick={() => setIsMobileMenuOpen(false)}
                             className={`flex items-center justify-center w-full h-full rounded-full transition-all duration-300 ${
-                              isActive 
+                              isActiveLink(link.href)
                                 ? 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.8)] scale-110' 
                                 : 'bg-white/90 dark:bg-slate-800 text-slate-800 dark:text-slate-200 shadow-md hover:scale-110 border border-white/50 dark:border-slate-600'
                             }`}

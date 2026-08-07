@@ -1,7 +1,7 @@
 import { getSiteConfig } from "@/lib/site";
 import Navbar from "../../components/Navbar";
 import PageTransition from "../../components/PageTransition";
-import ToolboxClient from "./ToolboxClient";
+import ToolboxHub from "./ToolboxHub";
 
 const siteConfig = getSiteConfig();
 
@@ -15,7 +15,7 @@ export default function ToolboxPage() {
     <div className="min-h-screen relative pb-32">
       <Navbar />
       <PageTransition>
-        <ToolboxClient />
+        <ToolboxHub />
       </PageTransition>
     </div>
   );
