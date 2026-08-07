@@ -48,20 +48,48 @@ export function buildStatusPieOption(
   active: number,
   isDark: boolean
 ) {
+  const total = completed + active;
   const textColor = isDark ? "#e2e8f0" : "#334155";
   return {
     backgroundColor: "transparent",
-    tooltip: { trigger: "item" as const },
+    tooltip: { trigger: "item" as const, formatter: "{b}：{c} 项（{d}%）" },
     legend: {
       bottom: 0,
+      itemWidth: 10,
+      itemHeight: 10,
       textStyle: { color: textColor },
+      formatter: (name: string) => {
+        const count = name === "已完成" ? completed : active;
+        return `${name} ${count} 项`;
+      },
+    },
+    graphic: {
+      type: "text",
+      left: "center",
+      top: "middle",
+      style: {
+        text: `共 ${total} 项`,
+        textAlign: "center",
+        fill: textColor,
+        fontSize: 15,
+        fontWeight: "bold",
+      },
     },
     series: [
       {
         type: "pie" as const,
-        radius: ["42%", "68%"],
-        center: ["50%", "45%"],
-        label: { color: textColor, formatter: "{b} {c} ({d}%)" },
+        radius: ["42%", "66%"],
+        center: ["50%", "50%"],
+        label: { show: false },
+        labelLine: { show: false },
+        emphasis: {
+          label: {
+            show: true,
+            formatter: "{b} {c} 项",
+            color: textColor,
+            fontWeight: "bold",
+          },
+        },
         data: [
           { name: "已完成", value: completed, itemStyle: { color: EMERALD } },
           { name: "进行中", value: active, itemStyle: { color: INDIGO } },

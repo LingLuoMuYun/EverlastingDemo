@@ -32,6 +32,8 @@ export interface UsePomodoroReturn {
   reset: () => void;
   switchMode: (mode: PomodoroMode) => void;
   skip: () => void;
+  /** 立即结束当前阶段（专注会计入番茄数与专注时长，与自然结束一致） */
+  finish: () => void;
   setCurrentTodo: (id?: string) => void;
 }
 
@@ -253,6 +255,16 @@ export function usePomodoro(
     commit({ ...prev, mode: nextMode, running: false, endAt: null });
   }, [applyRemaining, commit, restoreTitle]);
 
+  const finish = useCallback(() => {
+    const prev = stateRef.current;
+    flashTitle(
+      prev.mode === "focus"
+        ? "⏰ 专注完成，休息一下吧"
+        : "休息结束，开始新一轮专注"
+    );
+    finishCurrent();
+  }, [finishCurrent, flashTitle]);
+
   const updateSettings = useCallback(
     (patch: Partial<PomodoroSettings>) => {
       const next = { ...settingsRef.current, ...patch };
@@ -286,6 +298,7 @@ export function usePomodoro(
     reset,
     switchMode,
     skip,
+    finish,
     setCurrentTodo,
   };
 }

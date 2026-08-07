@@ -145,7 +145,7 @@ export default function StatsPanel({
             暂无任务数据，先去 TodoList 添加任务吧
           </div>
         ) : (
-          <EChart option={pieOption} className="h-40 w-full" />
+          <EChart option={pieOption} className="h-52 w-full" />
         )}
       </div>
     </section>

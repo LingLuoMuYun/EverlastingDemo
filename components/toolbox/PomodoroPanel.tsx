@@ -8,6 +8,7 @@ import {
   SkipForward,
   Timer,
   Bell,
+  Square,
 } from "lucide-react";
 import { useToast } from "../ToastProvider";
 import type { TodoItem, PomodoroMode } from "./types";
@@ -64,12 +65,14 @@ export default function PomodoroPanel({
     settings,
     updateSettings,
     remainingMs,
+    totalMs,
     progress,
     start,
     pause,
     reset,
     switchMode,
     skip,
+    finish,
     setCurrentTodo,
   } = api;
 
@@ -83,6 +86,7 @@ export default function PomodoroPanel({
   const activeTodos = todos.filter((t) => !t.completed);
   const currentTodo = todos.find((t) => t.id === state.currentTodoId);
   const currentTab = MODE_TABS.find((m) => m.key === state.mode)!;
+  const canFinish = state.running || remainingMs < totalMs;
   const R = 84;
   const C = 2 * Math.PI * R;
 
@@ -219,6 +223,19 @@ export default function PomodoroPanel({
           title="重置"
         >
           <RotateCcw className="w-5 h-5" />
+        </button>
+        <button
+          onClick={finish}
+          disabled={!canFinish}
+          className={`h-11 px-5 rounded-full text-white font-bold text-sm flex items-center gap-1.5 transition-all active:scale-95 ${
+            canFinish
+              ? "bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-500/40"
+              : "bg-slate-300 dark:bg-slate-700 text-slate-100 dark:text-slate-300 cursor-not-allowed shadow-none"
+          }`}
+          title="立即结束当前阶段（专注会记为已完成并计入统计）"
+        >
+          <Square className="w-4 h-4" />
+          结束
         </button>
       </div>
 
