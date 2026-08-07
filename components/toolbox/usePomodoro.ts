@@ -9,6 +9,12 @@ const MODE_MINUTES: Record<PomodoroMode, MinuteKey> = {
   longBreak: "longBreakMinutes",
 };
 
+const MODE_LABEL: Record<PomodoroMode, string> = {
+  focus: "专注",
+  shortBreak: "短休息",
+  longBreak: "长休息",
+};
+
 export interface PomodoroHandlers {
   onFocusCompleted?: (completedFocus: number, focusSeconds: number) => void;
   onBreakCompleted?: () => void;
@@ -51,6 +57,9 @@ export function usePomodoro(
   const persistStateRef = useRef(onStateChange);
   const persistSettingsRef = useRef(onSettingsChange);
   const handlersRef = useRef(handlers);
+  const originalTitleRef = useRef<string | null>(null);
+  const titleTimerRef = useRef<number | null>(null);
+  const flashUntilRef = useRef(0);
 
   useEffect(() => {
     stateRef.current = state;
@@ -72,6 +81,59 @@ export function usePomodoro(
     remainingRef.current = ms;
     setRemainingMs(ms);
   }, []);
+
+  const setDocumentTitle = useCallback((text: string) => {
+    try {
+      document.title = text;
+    } catch {
+      // 静默
+    }
+  }, []);
+
+  const captureOriginalTitle = useCallback(() => {
+    if (originalTitleRef.current === null) {
+      try {
+        originalTitleRef.current = document.title;
+      } catch {
+        // 静默
+      }
+    }
+  }, []);
+
+  const clearTitleTimer = useCallback(() => {
+    if (titleTimerRef.current !== null) {
+      window.clearTimeout(titleTimerRef.current);
+      titleTimerRef.current = null;
+    }
+  }, []);
+
+  const restoreTitle = useCallback(() => {
+    clearTitleTimer();
+    if (originalTitleRef.current !== null) {
+      setDocumentTitle(originalTitleRef.current);
+      originalTitleRef.current = null;
+    }
+  }, [clearTitleTimer, setDocumentTitle]);
+
+  const flashTitle = useCallback(
+    (text: string) => {
+      captureOriginalTitle();
+      clearTitleTimer();
+      setDocumentTitle(text);
+      flashUntilRef.current = Date.now() + 1500; // 闪烁期间暂停倒计时标题，避免被立刻覆盖
+      titleTimerRef.current = window.setTimeout(() => restoreTitle(), 5000);
+    },
+    [captureOriginalTitle, clearTitleTimer, restoreTitle, setDocumentTitle]
+  );
+
+  const updateCountdownTitle = useCallback(
+    (ms: number, mode: PomodoroMode) => {
+      captureOriginalTitle();
+      clearTitleTimer();
+      setDocumentTitle(`${formatMs(ms)} · ${MODE_LABEL[mode]}`);
+    },
+    [captureOriginalTitle, clearTitleTimer, setDocumentTitle]
+  );
 
   const commit = useCallback((next: PomodoroState) => {
     stateRef.current = next;
@@ -123,37 +185,61 @@ export function usePomodoro(
       setRemainingMs(left);
       if (left <= 0) {
         window.clearInterval(timer);
+        const finishedMode = stateRef.current.mode;
+        flashTitle(
+          finishedMode === "focus"
+            ? "⏰ 专注完成，休息一下吧"
+            : "休息结束，开始新一轮专注"
+        );
         finishCurrent();
+      } else if (Date.now() >= flashUntilRef.current) {
+        updateCountdownTitle(left, stateRef.current.mode);
       }
     }, 250);
     return () => window.clearInterval(timer);
-  }, [state.running, state.endAt, finishCurrent]);
+  }, [state.running, state.endAt, finishCurrent, flashTitle, updateCountdownTitle]);
+
+  // 组件卸载时还原标题
+  useEffect(
+    () => () => {
+      restoreTitle();
+    },
+    [restoreTitle]
+  );
 
   const start = useCallback(() => {
     const total = remainingRef.current;
+    const mode = stateRef.current.mode;
+    captureOriginalTitle();
+    clearTitleTimer();
+    setDocumentTitle(`${formatMs(total)} · ${MODE_LABEL[mode]}`);
     commit({ ...stateRef.current, running: true, endAt: Date.now() + total });
-  }, [commit]);
+  }, [captureOriginalTitle, clearTitleTimer, commit, setDocumentTitle]);
 
   const pause = useCallback(() => {
+    restoreTitle();
     commit({ ...stateRef.current, running: false });
-  }, [commit]);
+  }, [commit, restoreTitle]);
 
   const reset = useCallback(() => {
+    restoreTitle();
     const total = settingsRef.current.focusMinutes * 60_000;
     applyRemaining(total);
     commit({ ...stateRef.current, mode: "focus", running: false, endAt: null });
-  }, [applyRemaining, commit]);
+  }, [applyRemaining, commit, restoreTitle]);
 
   const switchMode = useCallback(
     (mode: PomodoroMode) => {
+      restoreTitle();
       const total = settingsRef.current[MODE_MINUTES[mode]] * 60_000;
       applyRemaining(total);
       commit({ ...stateRef.current, mode, running: false, endAt: null });
     },
-    [applyRemaining, commit]
+    [applyRemaining, commit, restoreTitle]
   );
 
   const skip = useCallback(() => {
+    restoreTitle();
     const conf = settingsRef.current;
     const prev = stateRef.current;
     const nextMode: PomodoroMode =
@@ -165,7 +251,7 @@ export function usePomodoro(
     const total = conf[MODE_MINUTES[nextMode]] * 60_000;
     applyRemaining(total);
     commit({ ...prev, mode: nextMode, running: false, endAt: null });
-  }, [applyRemaining, commit]);
+  }, [applyRemaining, commit, restoreTitle]);
 
   const updateSettings = useCallback(
     (patch: Partial<PomodoroSettings>) => {

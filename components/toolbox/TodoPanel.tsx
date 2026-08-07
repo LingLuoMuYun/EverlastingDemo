@@ -10,6 +10,7 @@ import {
   Calendar,
   Search,
   Check,
+  GripVertical,
 } from "lucide-react";
 import type { TodoItem, TodoPriority } from "./types";
 import type { TodoFilter, TodoSort, UseTodosReturn } from "./useTodos";
@@ -49,6 +50,7 @@ const SORT_OPTIONS: { key: TodoSort; label: string }[] = [
   { key: "created", label: "创建时间" },
   { key: "priority", label: "优先级" },
   { key: "due", label: "截止日期" },
+  { key: "manual", label: "手动排序" },
 ];
 
 export default function TodoPanel({ api }: { api: UseTodosReturn }) {
@@ -56,6 +58,8 @@ export default function TodoPanel({ api }: { api: UseTodosReturn }) {
   const [newPriority, setNewPriority] = useState<TodoPriority>("medium");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<TodoItem | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const today = todayKey();
 
@@ -169,6 +173,13 @@ export default function TodoPanel({ api }: { api: UseTodosReturn }) {
         </select>
       </div>
 
+      {api.sort === "manual" && (
+        <p className="mb-3 text-xs font-bold text-indigo-500 dark:text-indigo-400 flex items-center gap-1.5">
+          <GripVertical className="w-3.5 h-3.5" />
+          手动排序模式：拖拽任务行可调整顺序
+        </p>
+      )}
+
       {api.counts.total > 0 && (
         <div className="mb-4">
           <div className="flex justify-between text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">
@@ -208,9 +219,42 @@ export default function TodoPanel({ api }: { api: UseTodosReturn }) {
           return (
             <div
               key={t.id}
+              draggable={api.sort === "manual"}
+              onDragStart={(e) => {
+                setDragId(t.id);
+                try {
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData("text/plain", t.id);
+                } catch {
+                  // 静默
+                }
+              }}
+              onDragOver={(e) => {
+                if (api.sort !== "manual" || !dragId || dragId === t.id) return;
+                e.preventDefault();
+                setDragOverId(t.id);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (dragId && dragId !== t.id) api.moveBefore(dragId, t.id);
+                setDragId(null);
+                setDragOverId(null);
+              }}
+              onDragEnd={() => {
+                setDragId(null);
+                setDragOverId(null);
+              }}
               className={`rounded-2xl border p-3.5 transition-all ${
+                api.sort === "manual"
+                  ? "cursor-grab active:cursor-grabbing"
+                  : ""
+              } ${dragId === t.id ? "opacity-40" : t.completed ? "opacity-70" : ""} ${
+                dragOverId === t.id && dragId !== t.id
+                  ? "ring-2 ring-indigo-500/70 border-indigo-400"
+                  : ""
+              } ${
                 t.completed
-                  ? "bg-white/30 dark:bg-slate-900/30 border-white/40 dark:border-white/5 opacity-70"
+                  ? "bg-white/30 dark:bg-slate-900/30 border-white/40 dark:border-white/5"
                   : "bg-white/50 dark:bg-slate-900/50 border-white/60 dark:border-white/10"
               }`}
             >
@@ -355,6 +399,14 @@ export default function TodoPanel({ api }: { api: UseTodosReturn }) {
                     </div>
                   </div>
                   <div className="flex gap-1 shrink-0">
+                    {api.sort === "manual" && (
+                      <span
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-300 dark:text-slate-600 cursor-grab"
+                        title="拖拽排序"
+                      >
+                        <GripVertical className="w-4 h-4" />
+                      </span>
+                    )}
                     <button
                       onClick={() => startEdit(t)}
                       className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10 transition-colors"

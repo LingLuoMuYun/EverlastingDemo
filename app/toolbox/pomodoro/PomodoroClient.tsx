@@ -1,19 +1,29 @@
 "use client";
 
 import { useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useToast } from "../../../components/ToastProvider";
 import { useToolboxData } from "../../../components/toolbox/useToolboxData";
 import { usePomodoro } from "../../../components/toolbox/usePomodoro";
 import PomodoroPanel from "../../../components/toolbox/PomodoroPanel";
-import StatsPanel from "../../../components/toolbox/StatsPanel";
 import BackLink from "../../../components/toolbox/BackLink";
 import {
-  flashTitle,
   maybeNotify,
   playFinishSound,
 } from "../../../components/toolbox/feedback";
 import { todayKey } from "../../../components/toolbox/storage";
 import type { ToolboxData } from "../../../components/toolbox/types";
+
+// ECharts 按需加载：只进入番茄钟页时才拉取图表代码，减小首屏 bundle
+const StatsPanel = dynamic(
+  () => import("../../../components/toolbox/StatsPanel"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-80 rounded-3xl bg-white/30 dark:bg-slate-800/30 backdrop-blur-md border border-white/40 dark:border-white/10 animate-pulse" />
+    ),
+  }
+);
 
 export default function PomodoroClient() {
   const { data, updateData } = useToolboxData();
@@ -77,13 +87,11 @@ function PomodoroWorkspace({
           return { ...d, stats };
         });
         playFinishSound(data.pomodoro.settings.sound);
-        flashTitle("⏰ 专注完成，休息一下吧");
         maybeNotify("番茄钟", "本轮专注完成，休息一下吧");
         showToast("专注完成！+1 番茄", "success");
       },
       onBreakCompleted: () => {
         playFinishSound(data.pomodoro.settings.sound);
-        flashTitle("休息结束，开始新一轮专注");
         showToast("休息结束，开始新一轮专注", "info");
       },
     }

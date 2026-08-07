@@ -3,7 +3,7 @@ import type { TodoItem, TodoPriority } from "./types";
 import { uid } from "./storage";
 
 export type TodoFilter = "all" | "active" | "completed";
-export type TodoSort = "created" | "priority" | "due";
+export type TodoSort = "created" | "priority" | "due" | "manual";
 
 export const PRIORITY_ORDER: Record<TodoPriority, number> = {
   high: 0,
@@ -24,6 +24,8 @@ export interface UseTodosReturn {
   setKeyword: (k: string) => void;
   sort: TodoSort;
   setSort: (s: TodoSort) => void;
+  /** 手动排序：把 draggedId 移动到 targetId 之前 */
+  moveBefore: (draggedId: string, targetId: string) => void;
   visible: TodoItem[];
   counts: { total: number; active: number; completed: number };
 }
@@ -102,6 +104,22 @@ export function useTodos(
     commit((prev) => prev.filter((t) => !t.completed));
   }, [commit]);
 
+  const moveBefore = useCallback(
+    (draggedId: string, targetId: string) => {
+      commit((prev) => {
+        const from = prev.findIndex((t) => t.id === draggedId);
+        const to = prev.findIndex((t) => t.id === targetId);
+        if (from < 0 || to < 0 || from === to) return prev;
+        const next = [...prev];
+        const [item] = next.splice(from, 1);
+        const insertAt = next.findIndex((t) => t.id === targetId);
+        next.splice(insertAt, 0, item);
+        return next;
+      });
+    },
+    [commit]
+  );
+
   const visible = useMemo(() => {
     let list = todos;
     if (filter === "active") list = list.filter((t) => !t.completed);
@@ -113,6 +131,7 @@ export function useTodos(
           t.title.toLowerCase().includes(kw) || (t.note ?? "").toLowerCase().includes(kw)
       );
     }
+    if (sort === "manual") return list; // 手动排序：保持数组顺序
     const sorted = [...list];
     if (sort === "priority") {
       sorted.sort(
@@ -154,6 +173,7 @@ export function useTodos(
     setKeyword,
     sort,
     setSort,
+    moveBefore,
     visible,
     counts,
   };

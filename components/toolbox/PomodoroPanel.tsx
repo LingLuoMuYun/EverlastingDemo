@@ -1,6 +1,15 @@
 "use client";
 
-import { Play, Pause, RotateCcw, SkipForward, Timer } from "lucide-react";
+import { useState } from "react";
+import {
+  Play,
+  Pause,
+  RotateCcw,
+  SkipForward,
+  Timer,
+  Bell,
+} from "lucide-react";
+import { useToast } from "../ToastProvider";
 import type { TodoItem, PomodoroMode } from "./types";
 import type { UsePomodoroReturn } from "./usePomodoro";
 import { formatMs } from "./usePomodoro";
@@ -64,6 +73,13 @@ export default function PomodoroPanel({
     setCurrentTodo,
   } = api;
 
+  const { showToast } = useToast();
+  const [notifPerm, setNotifPerm] = useState<string>(() =>
+    typeof window !== "undefined" && "Notification" in window
+      ? Notification.permission
+      : "unsupported"
+  );
+
   const activeTodos = todos.filter((t) => !t.completed);
   const currentTodo = todos.find((t) => t.id === state.currentTodoId);
   const currentTab = MODE_TABS.find((m) => m.key === state.mode)!;
@@ -78,6 +94,26 @@ export default function PomodoroPanel({
   const setBreakInterval = (value: number) => {
     const v = Math.min(12, Math.max(1, Math.round(value) || 1));
     updateSettings({ longBreakInterval: v });
+  };
+
+  const handleRequestNotification = async () => {
+    if (!("Notification" in window)) {
+      showToast("当前浏览器不支持系统通知", "warning");
+      return;
+    }
+    try {
+      const perm = await Notification.requestPermission();
+      setNotifPerm(perm);
+      if (perm === "granted") {
+        showToast("通知已开启，专注完成时会提醒你", "success");
+      } else if (perm === "denied") {
+        showToast("通知被拒绝，可在浏览器设置中重新允许", "warning");
+      } else {
+        showToast("未获得通知权限，仍会使用页面标题提醒", "info");
+      }
+    } catch {
+      showToast("请求通知权限失败", "warning");
+    }
   };
 
   return (
@@ -279,6 +315,37 @@ export default function PomodoroPanel({
             </button>
             提示音
           </label>
+
+          <button
+            type="button"
+            onClick={handleRequestNotification}
+            disabled={
+              notifPerm === "granted" ||
+              notifPerm === "denied" ||
+              notifPerm === "unsupported"
+            }
+            className={`h-9 px-3 rounded-lg text-xs font-bold flex items-center gap-1.5 border transition-all ${
+              notifPerm === "granted"
+                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                : notifPerm === "denied"
+                  ? "bg-red-500/10 text-red-500 border-red-500/30 opacity-70 cursor-not-allowed"
+                  : "bg-white/60 dark:bg-slate-800/60 border-white/60 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-indigo-500 hover:bg-indigo-500/10"
+            }`}
+            title={
+              notifPerm === "granted"
+                ? "系统通知已开启"
+                : notifPerm === "denied"
+                  ? "通知被拒绝，请在浏览器设置中允许"
+                  : "开启系统通知，专注完成时在浏览器外也能收到提醒"
+            }
+          >
+            <Bell className="w-3.5 h-3.5" />
+            {notifPerm === "granted"
+              ? "通知已开启"
+              : notifPerm === "denied"
+                ? "通知被拒绝"
+                : "开启通知"}
+          </button>
 
           <select
             value={state.currentTodoId ?? ""}
