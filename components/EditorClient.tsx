@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { KIND_LABELS, type NoteKind } from "../lib/types";
+import { IMPORT_SESSION_KEY, KIND_LABELS, type MarkdownImportPayload, type NoteKind } from "../lib/types";
 import { useToast } from "./ToastProvider";
+import ImportDialog from "./ImportDialog";
 
 type NoteLike = {
   slug: string;
@@ -88,6 +89,8 @@ export default function EditorClient(
 }
 
 function EditorList({ notes, autoPush, embedded }: { notes: NoteLike[]; autoPush?: boolean; embedded?: boolean }) {
+  const [importOpen, setImportOpen] = useState(false);
+
   return (
     <div className={`w-full max-w-5xl mx-auto px-4 sm:px-10 py-8 relative z-10 ${embedded ? "pt-2 md:pt-2" : "pt-24 md:pt-28"}`}>
       <div className="flex items-start justify-between mb-8 gap-4 flex-wrap">
@@ -102,12 +105,20 @@ function EditorList({ notes, autoPush, embedded }: { notes: NoteLike[]; autoPush
             </p>
           )}
         </div>
-        <Link
-          href="/admin/notes/new"
-          className="px-4 py-2.5 rounded-xl bg-indigo-500 text-white text-sm font-black shadow-lg hover:bg-indigo-600 transition-colors"
-        >
-          + 新建笔记
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setImportOpen(true)}
+            className="px-4 py-2.5 rounded-xl bg-white/60 dark:bg-slate-800/60 text-slate-700 dark:text-slate-200 border border-white/40 dark:border-white/10 text-sm font-black shadow-lg hover:bg-white dark:hover:bg-slate-700 transition-colors"
+          >
+            导入
+          </button>
+          <Link
+            href="/admin/notes/new"
+            className="px-4 py-2.5 rounded-xl bg-indigo-500 text-white text-sm font-black shadow-lg hover:bg-indigo-600 transition-colors"
+          >
+            + 新建笔记
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -145,6 +156,8 @@ function EditorList({ notes, autoPush, embedded }: { notes: NoteLike[]; autoPush
           </Link>
         ))}
       </div>
+
+      <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} />
     </div>
   );
 }
@@ -153,6 +166,10 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush, embedded }: { note
   const router = useRouter();
   const { showToast } = useToast();
   const isNew = !note;
+
+  // 列表页「导入」的解析结果：挂载后从 sessionStorage 读取并立即清除（避免 SSR 水合差异）
+  const [importPayload, setImportPayload] = useState<MarkdownImportPayload | null>(null);
+  const importPendingRef = useRef(false);
 
   const [kind, setKind] = useState<NoteKind>(note?.kind || "article");
   const [title, setTitle] = useState(note?.title || "");
@@ -164,6 +181,7 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush, embedded }: { note
   const [mood, setMood] = useState(note?.mood || "");
   const [location, setLocation] = useState(note?.location || "");
   const [draft, setDraft] = useState(Boolean(note?.draft));
+  // slugTouched 保持 false：导入的 slugHint 可被后续改标题自动重新生成
   const [slug, setSlug] = useState(note?.slug || "");
   const [content, setContent] = useState(note?.content || "");
   const [slugTouched, setSlugTouched] = useState(Boolean(note?.slug));
@@ -182,8 +200,42 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush, embedded }: { note
 
   const storageKey = `note-unsaved:${note?.slug || "new"}`;
 
+  // 导入预填：读取 sessionStorage 一次并立即清除（须在草稿恢复之前执行）
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let payload: MarkdownImportPayload | null = null;
+    try {
+      const raw = sessionStorage.getItem(IMPORT_SESSION_KEY);
+      if (raw) {
+        sessionStorage.removeItem(IMPORT_SESSION_KEY);
+        const parsed = JSON.parse(raw) as MarkdownImportPayload;
+        if (parsed && typeof parsed.content === "string") payload = parsed;
+      }
+    } catch {
+      /* ignore */
+    }
+    if (!payload) return;
+    importPendingRef.current = true;
+    setImportPayload(payload);
+    setKind(payload.kind);
+    setTitle(payload.title || "");
+    setDate(toDateTimeInput(payload.date));
+    setDescription(payload.description || "");
+    setCover(payload.cover || "");
+    setTagsText(payload.tags?.join(", ") || "");
+    setMood(payload.mood || "");
+    setLocation(payload.location || "");
+    setDraft(Boolean(payload.draft));
+    setSlug(payload.slugHint || "");
+    setContent(payload.content);
+    showToast(`已从「${payload.sourceName}」导入，确认后保存`, "success");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // 恢复本地未保存草稿（自动保存）
   useEffect(() => {
+    // 导入预填优先：不覆盖为旧的本地草稿
+    if (importPendingRef.current) return;
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
@@ -428,6 +480,11 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush, embedded }: { note
           <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tighter mt-2">
             {isNew ? "新建笔记" : `编辑：${slug}`}
           </h1>
+          {isNew && importPayload && (
+            <span className="inline-flex items-center gap-1.5 mt-2 text-[10px] font-black px-2.5 py-1 rounded-full border bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20">
+              已导入：{importPayload.sourceName}
+            </span>
+          )}
           {autoPush && (
             <span className="inline-flex items-center gap-1.5 mt-2 text-[10px] font-black px-2.5 py-1 rounded-full border bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>

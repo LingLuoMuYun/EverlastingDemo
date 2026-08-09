@@ -36,10 +36,43 @@ function rehypeNoReferrerImages() {
   };
 }
 
-/** 文本预清洗：统一换行 → 修数字列表 → 代码块保护 → 正文连续空行转 <br>（顺序与源码一致） */
+/**
+ * 把飞书导出中转义成 \| 的表格行还原为 GFM 表格语法（跳过代码块）。
+ * 飞书导出形如：\| a \| b \|（含 \-\-\- 分隔行），未还原时 remark-gfm 不识别为表格。
+ * 还原后若表格紧跟非空行（常见为列表项惰性延续），补一个空行让表格独立成块，
+ * 否则 remark-gfm 仍会把它当作段落/列表项文本。
+ * 仅在整行以 \| 开头、以 \| 结尾时处理，避免误伤普通转义内容。
+ */
+export function normalizeFeishuTableRows(content: string): string {
+  const blocks = content.split(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g);
+  return blocks
+    .map((block, index) => {
+      if (index % 2 === 1) return block; // 代码块原样保留
+      const lines = block.split("\n");
+      const out: string[] = [];
+      let prevLine = "";
+      let prevWasTableRow = false;
+      for (const line of lines) {
+        if (/^[ \t]*\\\|.*\\\|[ \t]*$/.test(line)) {
+          if (!prevWasTableRow && prevLine.trim() !== "") out.push("");
+          out.push(line.replace(/\\\|/g, "|").replace(/\\-/g, "-"));
+          prevWasTableRow = true;
+        } else {
+          out.push(line);
+          prevWasTableRow = false;
+        }
+        prevLine = line;
+      }
+      return out.join("\n");
+    })
+    .join("");
+}
+
+/** 文本预清洗：统一换行 → 修数字列表 → 还原飞书转义表格 → 代码块保护 → 正文连续空行转 <br>（顺序与源码一致） */
 export function preprocessContent(content: string): string {
   content = content.replace(/\r\n/g, "\n").replace(/^[ \t]+$/gm, "");
   content = content.replace(/^(\s*\d+)\.([^ \n])/gm, "$1. $2");
+  content = normalizeFeishuTableRows(content);
   const blocks = content.split(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g);
   return blocks
     .map((block, index) => {
