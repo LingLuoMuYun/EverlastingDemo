@@ -14,6 +14,7 @@ export default function MusicClient() {
     isLoading, isWaiting, volumeSupported, togglePlay, nextSong, prevSong, handleSeek,
     currentIndex,
     playSong,
+    collections, activeCollectionId, selectCollection, totalTracks,
     playMode, togglePlayMode,
     volume, setVolume, isMuted, toggleMute
   } = useMusic();
@@ -154,7 +155,7 @@ export default function MusicClient() {
     );
   }
 
-  if (!currentSong || playlist.length === 0) {
+  if (totalTracks === 0) {
     return (
       <div className="min-h-screen relative pb-32 flex flex-col">
         <Navbar />
@@ -167,7 +168,7 @@ export default function MusicClient() {
     );
   }
 
-  const songCover = currentSong.cover || currentSong.pic || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=1000&auto=format&fit=crop";
+  const songCover = currentSong?.cover || currentSong?.pic || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=1000&auto=format&fit=crop";
 
   return (
     <div className="min-h-screen relative pb-10 flex flex-col">
@@ -202,8 +203,8 @@ export default function MusicClient() {
                    </motion.div>
                 </div>
                 <div className="w-full text-center px-2 md:px-4 mb-2 md:mb-6">
-                  <h1 className="text-lg md:text-xl lg:text-2xl font-black text-slate-900 dark:text-white truncate drop-shadow-sm tracking-tight">{currentSong.title || currentSong.name}</h1>
-                  <h2 className="text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400 truncate mt-1 md:mt-2 tracking-widest">{currentSong.artist || currentSong.author}</h2>
+                  <h1 className="text-lg md:text-xl lg:text-2xl font-black text-slate-900 dark:text-white truncate drop-shadow-sm tracking-tight">{currentSong?.title || currentSong?.name || "选择一首歌开始播放"}</h1>
+                  <h2 className="text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400 truncate mt-1 md:mt-2 tracking-widest">{currentSong?.artist || currentSong?.author || "从下方歌单或列表选择"}</h2>
                 </div>
               </div>
 
@@ -268,7 +269,7 @@ export default function MusicClient() {
                               <div className="h-full flex items-center justify-center">
                                  <div className="flex flex-col items-center gap-3 md:gap-4">
                                     <Disc3 className="animate-spin text-indigo-500/40" size={32} />
-                                    <p className="text-base md:text-xl font-black text-indigo-500 animate-pulse">{currentLyric || "正在捕获灵魂旋律..."}</p>
+                                    <p className="text-base md:text-xl font-black text-indigo-500 animate-pulse">{currentSong ? (currentLyric || "正在捕获灵魂旋律...") : "选择一首歌开始播放"}</p>
                                  </div>
                               </div>
                             )}
@@ -278,6 +279,38 @@ export default function MusicClient() {
                 )}
                 {activeTab === 'playlist' && (
                   <div className="absolute inset-0 px-4 md:px-8 pb-4 md:pb-8 pt-2 md:pt-4 animate-in fade-in duration-300 flex flex-col">
+                    <div className="shrink-0 mb-3 md:mb-4">
+                      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
+                        <button
+                          onClick={() => selectCollection('all')}
+                          className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 md:py-2 rounded-full text-xs font-black transition-all border ${
+                            activeCollectionId === 'all'
+                              ? 'bg-indigo-500 text-white shadow-md border-indigo-500'
+                              : 'bg-white/40 dark:bg-slate-900/50 text-slate-500 dark:text-slate-300 border-white/40 dark:border-white/10 hover:text-indigo-500'
+                          }`}
+                        >
+                          全部歌曲
+                          <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black ${activeCollectionId === 'all' ? 'bg-white/25' : 'bg-slate-500/10'}`}>{totalTracks}</span>
+                        </button>
+                        {collections.map((c) => {
+                          const active = activeCollectionId === c.id;
+                          return (
+                            <button
+                              key={c.id}
+                              onClick={() => selectCollection(c.id)}
+                              className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 md:py-2 rounded-full text-xs font-black transition-all border ${
+                                active
+                                  ? 'bg-indigo-500 text-white shadow-md border-indigo-500'
+                                  : 'bg-white/40 dark:bg-slate-900/50 text-slate-500 dark:text-slate-300 border-white/40 dark:border-white/10 hover:text-indigo-500'
+                              }`}
+                            >
+                              {c.name}
+                              <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black ${active ? 'bg-white/25' : 'bg-slate-500/10'}`}>{c.trackIds?.length ?? 0}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                     <div className="relative w-full max-w-md mx-auto group mb-4 md:mb-8 shrink-0">
                       <div className="absolute inset-0 bg-indigo-500/5 blur-xl group-focus-within:bg-indigo-500/10 transition-all rounded-full" />
                       <Search className="w-4 h-4 md:w-5 md:h-5 absolute left-4 top-1/2 -translate-y-1/2 z-10 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
@@ -288,7 +321,7 @@ export default function MusicClient() {
                       <AnimatePresence mode='popLayout'>
                         {filteredPlaylist.map((song: Song) => {
                           const originalIndex = playlist.findIndex((s: Song) => s.id === song.id);
-                          const isPlayingThis = (song.id === currentSong.id);
+                          const isPlayingThis = Boolean(currentSong && song.id === currentSong.id);
                           return (
                             <motion.div layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} key={song.id} onClick={() => handlePlaySong(originalIndex)} className={`group flex items-center justify-between p-3 md:p-4 rounded-xl md:rounded-2xl cursor-pointer transition-all border ${isPlayingThis ? 'bg-white/60 dark:bg-slate-700/80 shadow-md border-indigo-500/30' : 'border-transparent hover:bg-white/30 dark:hover:bg-slate-700/40'}`}>
                               <div className="flex items-center gap-3 md:gap-4 w-[85%]">
@@ -302,6 +335,21 @@ export default function MusicClient() {
                           );
                         })}
                       </AnimatePresence>
+                      {filteredPlaylist.length === 0 && (
+                        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center py-16">
+                          <Disc3 size={32} className="text-indigo-500/30" />
+                          <p className="text-sm font-black text-slate-500 dark:text-slate-300">
+                            {searchQuery.trim()
+                              ? "没有找到匹配的歌曲"
+                              : activeCollectionId === 'all'
+                                ? "曲库为空，去后台添加歌曲吧"
+                                : "这个歌单还没有歌曲"}
+                          </p>
+                          {!searchQuery.trim() && activeCollectionId !== 'all' && (
+                            <p className="text-xs text-slate-400 font-medium">去 /admin/music 给歌曲勾选这个歌单即可</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

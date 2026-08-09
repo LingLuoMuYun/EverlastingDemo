@@ -37,6 +37,7 @@ interface AdminCollection {
   name: string;
   cover?: string;
   order: number;
+  trackIds?: string[];
 }
 
 interface NeteasePreview extends AdminTrack {
@@ -113,8 +114,10 @@ export default function MusicAdminClient() {
   // 歌单管理
   const [colManagerOpen, setColManagerOpen] = useState(false);
   const [newColName, setNewColName] = useState("");
+  const [newColCover, setNewColCover] = useState("");
   const [renamingCol, setRenamingCol] = useState<string | null>(null);
-  const [renameDraft, setRenameDraft] = useState("");
+  const [renameDraft, setRenameDraft] = useState({ name: "", cover: "" });
+  const [expandedCol, setExpandedCol] = useState<string | null>(null);
 
   // 本地上传
   const [uploading, setUploading] = useState(false);
@@ -533,12 +536,13 @@ export default function MusicAdminClient() {
       const res = await fetch("/api/music/collections", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, cover: newColCover.trim() || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "创建失败");
       setPushResult(data.push);
       setNewColName("");
+      setNewColCover("");
       showToast("歌单已创建并推送", "success");
       refresh();
     } catch (err) {
@@ -547,12 +551,12 @@ export default function MusicAdminClient() {
   };
 
   const renameCollection = async (c: AdminCollection) => {
-    if (!renameDraft.trim()) return;
+    if (!renameDraft.name.trim()) return;
     try {
       const res = await fetch("/api/music/collections", {
         method: "PUT",
         headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify({ id: c.id, name: renameDraft.trim() }),
+        body: JSON.stringify({ id: c.id, name: renameDraft.name.trim(), cover: renameDraft.cover.trim() || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "重命名失败");
@@ -602,6 +606,42 @@ export default function MusicAdminClient() {
       if (!res.ok) throw new Error(data.error || "删除失败");
       setPushResult(data.push);
       if (collectionFilter === c.id) setCollectionFilter("all");
+      if (expandedCol === c.id) setExpandedCol(null);
+      refresh();
+    } catch (err) {
+      showToast(String((err as Error).message || err), "error");
+    }
+  };
+
+  const collectionTrackIds = (c: AdminCollection): string[] => {
+    if (c.trackIds && c.trackIds.length) return c.trackIds;
+    return tracks.filter((t) => t.collectionIds?.includes(c.id)).map((t) => t.id);
+  };
+
+  const collectionTracks = (c: AdminCollection): AdminTrack[] => {
+    const map = new Map(tracks.map((t) => [t.id, t]));
+    return collectionTrackIds(c)
+      .map((id) => map.get(id))
+      .filter((t): t is AdminTrack => Boolean(t));
+  };
+
+  const moveCollectionTrack = async (c: AdminCollection, trackId: string, dir: -1 | 1) => {
+    const ids = collectionTrackIds(c);
+    const idx = ids.indexOf(trackId);
+    const target = idx + dir;
+    if (idx < 0 || target < 0 || target >= ids.length) return;
+    const next = [...ids];
+    [next[idx], next[target]] = [next[target], next[idx]];
+    try {
+      const res = await fetch("/api/music/collections", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ id: c.id, trackIds: next }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "排序失败");
+      setPushResult(data.push ?? null);
+      showToast("已调整歌单内顺序并推送", "success");
       refresh();
     } catch (err) {
       showToast(String((err as Error).message || err), "error");
@@ -939,57 +979,132 @@ export default function MusicAdminClient() {
               <p className="text-xs text-slate-400">还没有歌单，先创建一个用于给歌曲分组吧。</p>
             )}
             {collections.map((c) => (
-              <div key={c.id} className="flex items-center gap-2">
-                <button onClick={() => moveCollection(c, -1)} className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 transition-all" title="上移">
-                  <ArrowUp size={14} />
-                </button>
-                <button onClick={() => moveCollection(c, 1)} className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 transition-all" title="下移">
-                  <ArrowDown size={14} />
-                </button>
-                {renamingCol === c.id ? (
-                  <input
-                    className={`${inputCls} !w-48`}
-                    value={renameDraft}
-                    onChange={(e) => setRenameDraft(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && renameCollection(c)}
-                    autoFocus
-                  />
-                ) : (
-                  <span className="text-sm font-bold text-slate-800 dark:text-slate-200 flex-1">{c.name}</span>
-                )}
-                {renamingCol === c.id ? (
-                  <>
-                    <button onClick={() => renameCollection(c)} className="px-2.5 py-1 rounded-lg bg-indigo-500 text-white text-xs font-black">
-                      保存
-                    </button>
-                    <button onClick={() => setRenamingCol(null)} className="px-2.5 py-1 rounded-lg bg-white/50 text-slate-500 text-xs font-black">
-                      取消
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setRenamingCol(c.id);
-                      setRenameDraft(c.name);
-                    }}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 transition-all"
-                    title="重命名"
-                  >
-                    <Pencil size={14} />
+              <div key={c.id} className="rounded-2xl bg-white/30 dark:bg-slate-900/30 border border-white/30 dark:border-white/10 p-2.5">
+                <div className="flex items-center gap-2">
+                  <button onClick={() => moveCollection(c, -1)} className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 transition-all" title="上移">
+                    <ArrowUp size={14} />
                   </button>
+                  <button onClick={() => moveCollection(c, 1)} className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 transition-all" title="下移">
+                    <ArrowDown size={14} />
+                  </button>
+                  {c.cover ? (
+                    <img src={c.cover} alt={c.name} className="w-8 h-8 rounded-lg object-cover shrink-0 shadow-sm" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500 shrink-0">
+                      <List size={13} />
+                    </div>
+                  )}
+                  {renamingCol === c.id ? (
+                    <div className="flex-1 flex flex-col sm:flex-row gap-2 sm:items-center">
+                      <input
+                        className={`${inputCls} !w-full sm:!w-44`}
+                        placeholder="歌单名称"
+                        value={renameDraft.name}
+                        onChange={(e) => setRenameDraft({ ...renameDraft, name: e.target.value })}
+                        onKeyDown={(e) => e.key === "Enter" && renameCollection(c)}
+                        autoFocus
+                      />
+                      <input
+                        className={`${inputCls} !w-full sm:!w-56`}
+                        placeholder="封面 URL（可选）"
+                        value={renameDraft.cover}
+                        onChange={(e) => setRenameDraft({ ...renameDraft, cover: e.target.value })}
+                        onKeyDown={(e) => e.key === "Enter" && renameCollection(c)}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex-1 min-w-0 flex flex-col">
+                      <span className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{c.name}</span>
+                      <span className="text-[10px] font-bold text-slate-400">{collectionTrackIds(c).length} 首歌曲</span>
+                    </div>
+                  )}
+                  {renamingCol === c.id ? (
+                    <>
+                      <button onClick={() => renameCollection(c)} className="px-2.5 py-1 rounded-lg bg-indigo-500 text-white text-xs font-black">
+                        保存
+                      </button>
+                      <button onClick={() => setRenamingCol(null)} className="px-2.5 py-1 rounded-lg bg-white/50 text-slate-500 text-xs font-black">
+                        取消
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => {
+                          setRenamingCol(c.id);
+                          setRenameDraft({ name: c.name, cover: c.cover || "" });
+                        }}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-500 transition-all"
+                        title="编辑名称/封面"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={() => setExpandedCol(expandedCol === c.id ? null : c.id)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all ${
+                          expandedCol === c.id ? "bg-indigo-500 text-white" : "bg-white/50 text-slate-500 hover:text-indigo-500"
+                        }`}
+                        title="查看/排序歌单内歌曲"
+                      >
+                        {expandedCol === c.id ? "收起" : "歌曲"}
+                      </button>
+                    </>
+                  )}
+                  <button onClick={() => removeCollection(c)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 transition-all" title="删除歌单">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+
+                {expandedCol === c.id && (
+                  <div className="mt-2 ml-9 pl-3 border-l-2 border-indigo-500/20 space-y-1.5">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">歌单内歌曲（{collectionTracks(c).length}）</p>
+                    {collectionTracks(c).length === 0 && (
+                      <p className="text-xs text-slate-400">这个歌单还没有歌曲，可在下方曲库中编辑歌曲勾选归属。</p>
+                    )}
+                    {collectionTracks(c).map((ct, i) => {
+                      const list = collectionTracks(c);
+                      return (
+                        <div key={ct.id} className="flex items-center gap-2">
+                          <button
+                            disabled={i === 0}
+                            onClick={() => moveCollectionTrack(c, ct.id, -1)}
+                            className={`p-1 rounded-md transition-all ${i === 0 ? "text-slate-300 cursor-not-allowed" : "text-slate-400 hover:text-indigo-500"}`}
+                            title="上移"
+                          >
+                            <ArrowUp size={12} />
+                          </button>
+                          <button
+                            disabled={i === list.length - 1}
+                            onClick={() => moveCollectionTrack(c, ct.id, 1)}
+                            className={`p-1 rounded-md transition-all ${i === list.length - 1 ? "text-slate-300 cursor-not-allowed" : "text-slate-400 hover:text-indigo-500"}`}
+                            title="下移"
+                          >
+                            <ArrowDown size={12} />
+                          </button>
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate flex-1">
+                            {ct.title} <span className="text-slate-400 font-medium">- {ct.artist}</span>
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
-                <button onClick={() => removeCollection(c)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 transition-all" title="删除歌单">
-                  <Trash2 size={14} />
-                </button>
               </div>
             ))}
           </div>
           <div className="flex gap-2 mt-3">
             <input
-              className={inputCls}
+              className={`${inputCls} !w-48`}
               placeholder="新歌单名称，如：通勤"
               value={newColName}
               onChange={(e) => setNewColName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addCollection()}
+            />
+            <input
+              className={`${inputCls} !w-64`}
+              placeholder="封面 URL（可选）"
+              value={newColCover}
+              onChange={(e) => setNewColCover(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addCollection()}
             />
             <button onClick={addCollection} className="shrink-0 flex items-center gap-1 px-4 py-2 rounded-xl bg-indigo-500 text-white text-sm font-black hover:bg-indigo-600 transition-all">
@@ -1147,28 +1262,45 @@ export default function MusicAdminClient() {
                   <label className={labelCls}>标签（逗号分隔）</label>
                   <input className={inputCls} value={editDraft.tags} onChange={(e) => setEditDraft({ ...editDraft, tags: e.target.value })} />
                 </div>
-                <div>
-                  <label className={labelCls}>加入歌单</label>
-                  <select
-                    className={inputCls}
-                    value={t.collectionIds?.[0] || ""}
-                    onChange={(e) => {
-                      const colId = e.target.value;
-                      try {
-                        void putTrack(t.id, { collectionIds: colId ? [colId] : [] });
-                        refresh();
-                      } catch (err) {
-                        showToast(String((err as Error).message || err), "error");
-                      }
-                    }}
-                  >
-                    <option value="">不分组</option>
-                    {collections.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+                <div className="sm:col-span-2">
+                  <label className={labelCls}>加入歌单（可多选，勾选即时生效）</label>
+                  <div className="flex flex-wrap gap-2">
+                    {collections.length === 0 && (
+                      <span className="text-xs text-slate-400">暂无歌单，先在上方「歌单管理」里创建</span>
+                    )}
+                    {collections.map((c) => {
+                      const checked = (t.collectionIds || []).includes(c.id);
+                      return (
+                        <label
+                          key={c.id}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer border transition-all ${
+                            checked
+                              ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400"
+                              : "bg-white/40 dark:bg-slate-800/40 border-white/40 dark:border-white/10 text-slate-500 dark:text-slate-300"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="accent-emerald-500"
+                            checked={checked}
+                            onChange={async () => {
+                              const next = checked
+                                ? (t.collectionIds || []).filter((id) => id !== c.id)
+                                : [...(t.collectionIds || []), c.id];
+                              try {
+                                await putTrack(t.id, { collectionIds: next });
+                                showToast(checked ? "已移出歌单并推送" : "已加入歌单并推送", "success");
+                                refresh();
+                              } catch (err) {
+                                showToast(String((err as Error).message || err), "error");
+                              }
+                            }}
+                          />
+                          {c.name}
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div className="sm:col-span-2">
                   <label className={labelCls}>歌词（LRC）</label>

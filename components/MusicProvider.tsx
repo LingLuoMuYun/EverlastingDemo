@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useRef, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useRef, useEffect, useMemo, ReactNode } from 'react';
 import { useToast } from './ToastProvider';
 import { useMediaSession } from './useMediaSession';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
@@ -19,6 +19,7 @@ const STORAGE_KEYS = {
   muted: 'everlasting-music-muted',
   playMode: 'everlasting-music-playmode',
   queueState: 'everlasting-music-state',
+  collection: 'everlasting-music-collection',
 } as const;
 
 export interface LyricLine {
@@ -41,6 +42,7 @@ export interface Song {
   lrc?: string;
   lyric?: string;
   error?: boolean;
+  collectionIds?: string[];
 }
 
 interface RawSong {
@@ -56,6 +58,28 @@ interface RawSong {
   lrc?: string;
   lyrics?: { lrc?: string; tlyric?: string; yrc?: string | null };
   error?: boolean;
+  collectionIds?: string[];
+}
+
+export interface MusicCollection {
+  id: string;
+  name: string;
+  cover?: string;
+  order: number;
+  trackIds?: string[];
+}
+
+/** 根据当前选中的歌单计算播放队列：'all' 返回全库，否则按歌单 trackIds 顺序返回 */
+function computeQueue(allTracks: Song[], collections: MusicCollection[], collectionId: string): Song[] {
+  if (collectionId === "all" || !collectionId) return allTracks;
+  const col = collections.find((c) => c.id === collectionId);
+  if (!col) return [];
+  const byId = new Map(allTracks.map((s) => [String(s.id), s]));
+  const ordered = (col.trackIds || [])
+    .map((tid) => byId.get(tid))
+    .filter((s): s is Song => Boolean(s));
+  if (ordered.length > 0) return ordered;
+  return allTracks.filter((s) => s.collectionIds?.includes(collectionId));
 }
 
 function readStored(key: string): string | null {
@@ -125,12 +149,16 @@ interface MusicContextType {
   volume: number;
   isMuted: boolean;
   playMode: PlayMode;
+  collections: MusicCollection[];
+  activeCollectionId: string;
+  totalTracks: number;
 
   togglePlay: () => void;
   nextSong: () => void;
   prevSong: () => void;
   handleSeek: (e: React.ChangeEvent<HTMLInputElement>) => void;
   playSong: (index: number) => void;
+  selectCollection: (id: string) => void;
   setVolume: (value: number) => void;
   toggleMute: () => void;
   togglePlayMode: () => void;
@@ -140,7 +168,10 @@ const MusicContext = createContext<MusicContextType | null>(null);
 
 export function MusicProvider({ children }: { children: ReactNode }) {
   const { showToast } = useToast();
-  const [playlist, setPlaylist] = useState<Song[]>([]);
+  const [allTracks, setAllTracks] = useState<Song[]>([]);
+  const [collections, setCollections] = useState<MusicCollection[]>([]);
+  const [activeCollectionId, setActiveCollectionId] = useState("all");
+  const [detachedSong, setDetachedSong] = useState<Song | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -152,6 +183,13 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isWaiting, setIsWaiting] = useState(false);
   const [volumeSupported, setVolumeSupported] = useState(true);
+
+  // 当前可见队列：跟随所选歌单派生，'all' 为全库
+  const playlist = useMemo(
+    () => computeQueue(allTracks, collections, activeCollectionId),
+    [allTracks, collections, activeCollectionId]
+  );
+  const currentSong = detachedSong ?? (playlist.length > 0 ? playlist[Math.min(currentIndex, playlist.length - 1)] : undefined);
 
   // 🌟 2. 新增音量和播放模式状态（从 localStorage 恢复）
   const [volume, setVolumeState] = useState<number>(() => {
@@ -238,48 +276,59 @@ export function MusicProvider({ children }: { children: ReactNode }) {
           cover: song.cover || song.pic || 'https://bu.dusays.com/2026/03/24/69c24230a5ff8.jpg',
           src: song.src || song.url || '',
           lrcUrl: null,
-          lyrics: song.lyrics?.lrc ? parseLrc(song.lyrics.lrc) : []
+          lyrics: song.lyrics?.lrc ? parseLrc(song.lyrics.lrc) : [],
+          collectionIds: song.collectionIds || []
         }));
-
-    const applyPlaylist = (songs: Song[]) => {
-      if (!isMounted) return;
-      if (songs.length > 0) {
-        // 尝试恢复上次播放位置（曲库 id 顺序一致才恢复，曲库改过则丢弃）
-        try {
-          const stored = JSON.parse(readStored(STORAGE_KEYS.queueState) || "null") as {
-            playlistIds?: string[];
-            index?: number;
-            currentTime?: number;
-          } | null;
-          if (
-            stored &&
-            Array.isArray(stored.playlistIds) &&
-            stored.playlistIds.length === songs.length &&
-            stored.playlistIds.every((id, i) => id === String(songs[i].id))
-          ) {
-            const idx = Math.min(Math.max(0, Number(stored.index) || 0), songs.length - 1);
-            setCurrentIndex(idx);
-            const storedTime = Number(stored.currentTime);
-            if (Number.isFinite(storedTime) && storedTime > 0.5) {
-              restoreRef.current = storedTime;
-            }
-          }
-        } catch {
-          /* 恢复失败不影响播放 */
-        }
-        setPlaylist(songs);
-      } else {
-        setCurrentLyric("正在为你寻找绝世好歌");
-      }
-      setIsLoading(false);
-    };
 
     const fetchMusicData = async () => {
       try {
         const res = await fetch(`/api/music/library`);
         if (!res.ok) throw new Error(`library ${res.status}`);
-        const data = (await res.json()) as { tracks: RawSong[] };
-        applyPlaylist(toSongs(data.tracks));
+        const data = (await res.json()) as { tracks: RawSong[]; collections?: MusicCollection[] };
+        if (!isMounted) return;
+        const songs = toSongs(data.tracks);
+        const cols = Array.isArray(data.collections) ? data.collections : [];
+        setAllTracks(songs);
+        setCollections(cols);
+        if (songs.length === 0) setCurrentLyric("正在为你寻找绝世好歌");
+
+        // 恢复上次选择的歌单（已删除的歌单回退到"全部歌曲"）
+        const storedCol = readStored(STORAGE_KEYS.collection);
+        const restoredCol = storedCol && cols.some((c) => c.id === storedCol) ? storedCol : "all";
+        setActiveCollectionId(restoredCol);
+
+        // 尝试恢复上次播放位置（仅当歌单队列与上次一致；不一致则丢弃）
+        try {
+          const stored = JSON.parse(readStored(STORAGE_KEYS.queueState) || "null") as {
+            collectionId?: string;
+            playlistIds?: string[];
+            index?: number;
+            currentTime?: number;
+            activeSongId?: string | null;
+          } | null;
+          if (stored && Array.isArray(stored.playlistIds)) {
+            const queue = computeQueue(songs, cols, restoredCol);
+            if (
+              stored.playlistIds.length === queue.length &&
+              stored.playlistIds.every((id, i) => id === String(queue[i]?.id))
+            ) {
+              const idx = Math.min(Math.max(0, Number(stored.index) || 0), Math.max(0, queue.length - 1));
+              setCurrentIndex(idx);
+              const storedTime = Number(stored.currentTime);
+              if (Number.isFinite(storedTime) && storedTime > 0.5) {
+                restoreRef.current = storedTime;
+              }
+              const sid = stored.activeSongId ? String(stored.activeSongId) : "";
+              if (sid && String(queue[idx]?.id) !== sid) {
+                const detached = songs.find((s) => String(s.id) === sid);
+                if (detached) setDetachedSong(detached);
+              }
+            }
+          }
+        } catch {
+          /* 恢复失败不影响播放 */
+        }
+        setIsLoading(false);
       } catch {
         if (isMounted) { setCurrentLyric("网络初始化失败"); setIsLoading(false); }
       }
@@ -313,20 +362,22 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   // 🌟 播放队列持久化：刷新后恢复 index 与进度（2s 防抖）
   useEffect(() => {
-    if (playlist.length === 0) return;
+    if (allTracks.length === 0) return;
     const timer = setTimeout(() => {
       writeStored(
         STORAGE_KEYS.queueState,
         JSON.stringify({
+          collectionId: activeCollectionId,
           playlistIds: playlist.map((s) => String(s.id)),
           index: currentIndex,
           currentTime,
+          activeSongId: currentSong?.id ?? null,
           updatedAt: Date.now(),
         })
       );
     }, 2000);
     return () => clearTimeout(timer);
-  }, [playlist, currentIndex, currentTime]);
+  }, [allTracks.length, playlist, currentIndex, currentTime, activeCollectionId, currentSong?.id]);
 
   const togglePlay = () => {
     if (audioRef.current) {
@@ -338,6 +389,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   // 🌟 5. 重写 nextSong，加入对随机模式的处理
   const nextSong = () => {
+    setDetachedSong(null);
+    if (playlist.length === 0) return;
     if (playMode === 'random' && playlist.length > 1) {
       const next = Math.floor(Math.random() * playlist.length);
       setCurrentIndex(next === currentIndex ? (next + 1) % playlist.length : next);
@@ -349,6 +402,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   };
 
   const prevSong = () => {
+    setDetachedSong(null);
+    if (playlist.length === 0) return;
     if (playMode === 'random' && playlist.length > 1) {
       const next = Math.floor(Math.random() * playlist.length);
       setCurrentIndex(next === currentIndex ? (next - 1 + playlist.length) % playlist.length : next);
@@ -361,6 +416,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   // 🌟 6. 暴露直接播放指定歌曲的方法
   const playSong = (index: number) => {
+    setDetachedSong(null);
     setCurrentIndex(index);
     if (!isPlaying) setIsPlaying(true); // 保证切歌后自动播放
   };
@@ -391,7 +447,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     if (playMode === 'single' && audioRef.current) {
        audioRef.current.currentTime = 0;
        audioRef.current.play().catch(() => handleError());
-    } else if (playMode === 'order' && currentIndex >= playlist.length - 1) {
+    } else if (playMode === 'order' && !detachedSong && currentIndex >= playlist.length - 1) {
        setIsPlaying(false); // 顺序播完即停
     } else {
        nextSong();
@@ -453,43 +509,44 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   const handleWaiting = () => setIsWaiting(true);
 
-  // 切换歌曲：重置歌词/缓冲并自动开始播放；失败交给 handleError 自动跳歌（不置 isPlaying=false）
+  // 切换歌曲：重置歌词/缓冲；失败交给 handleError 自动跳歌（不置 isPlaying=false）
   useEffect(() => {
-    if (playlist.length === 0) return;
+    if (!currentSong) return;
     let isMounted = true;
     errorHandledRef.current = false;
-    const currentSong = playlist[currentIndex];
+    const song = currentSong;
     setLyrics([]);
     setCurrentLyric("♪ 正在缓冲 ♪");
     setIsWaiting(false);
-    if (Array.isArray(currentSong.lyrics) && currentSong.lyrics.length > 0) {
+    if (Array.isArray(song.lyrics) && song.lyrics.length > 0) {
       if (isMounted) {
-        setLyrics(currentSong.lyrics);
-        setCurrentLyric(currentSong.lyrics[0]?.text || "\u266a \u7eaf\u4eab\u97f3\u4e50 \u266a");
+        setLyrics(song.lyrics);
+        setCurrentLyric(song.lyrics[0]?.text || "\u266a \u7eaf\u4eab\u97f3\u4e50 \u266a");
       }
-    } else if (currentSong.lrcUrl) {
-      fetch(currentSong.lrcUrl)
+    } else if (song.lrcUrl) {
+      fetch(song.lrcUrl)
         .then(res => res.text())
         .then(text => {
           if (isMounted) {
              const parsed = parseLrc(text);
              setLyrics(parsed);
-             setPlaylist(prev => {
-                const newPlaylist = [...prev];
-                newPlaylist[currentIndex].lyrics = parsed;
-                return newPlaylist;
-             });
+             setAllTracks(prev => prev.map((s) => String(s.id) === String(song.id) ? { ...s, lyrics: parsed } : s));
           }
         })
         .catch(() => { if (isMounted) setCurrentLyric("\u266a \u7eaf\u4eab\u97f3\u4e50 \u266a"); });
     }
+    return () => { isMounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 以歌曲 id 为准，歌词等字段更新不触发重载
+  }, [currentSong?.id]);
 
+  // 切歌/换队列后保持自动播放
+  useEffect(() => {
+    if (playlist.length === 0) return;
     if (isPlaying && audioRef.current) {
       audioRef.current.play().catch(() => handleError());
     }
-    return () => { isMounted = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 故意只依赖 currentIndex 与长度，避免 playlist 更新触发无限循环
-  }, [currentIndex, playlist.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 只依赖当前歌曲与队列位置
+  }, [currentIndex, playlist.length, currentSong?.id]);
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newProgress = Number(e.target.value);
@@ -517,7 +574,25 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const currentSong = playlist[currentIndex];
+  // 🌟 选择歌单：切换队列；当前播放歌曲属于新歌单则原位续播，否则不打断播放（标记为脱离队列）
+  const selectCollection = (id: string) => {
+    writeStored(STORAGE_KEYS.collection, id);
+    setActiveCollectionId(id);
+    const queue = computeQueue(allTracks, collections, id);
+    if (isPlaying && currentSong) {
+      const pos = queue.findIndex((s) => String(s.id) === String(currentSong.id));
+      if (pos >= 0) {
+        setDetachedSong(null);
+        setCurrentIndex(pos);
+      } else {
+        setDetachedSong(currentSong);
+        setCurrentIndex(0);
+      }
+    } else {
+      setDetachedSong(null);
+      setCurrentIndex(0);
+    }
+  };
 
   // 🌟 预加载下一首（非随机模式），切歌更流畅
   useEffect(() => {
@@ -559,6 +634,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
     }
+    setDetachedSong(null);
     setIsPlaying(false);
   };
 
@@ -605,8 +681,9 @@ export function MusicProvider({ children }: { children: ReactNode }) {
         playlist, currentIndex, currentSong, isPlaying, progress, currentTime, duration, buffered, currentLyric, isLoading,
         isWaiting, volumeSupported,
         volume, isMuted, playMode, // 暴露新状态
+        collections, activeCollectionId, totalTracks: allTracks.length,
         togglePlay, nextSong, prevSong, handleSeek,
-        playSong, setVolume, toggleMute, togglePlayMode // 暴露新方法
+        playSong, selectCollection, setVolume, toggleMute, togglePlayMode // 暴露新方法
     }}>
       {children}
       {currentSong && (

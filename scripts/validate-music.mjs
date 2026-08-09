@@ -55,6 +55,28 @@ for (const t of library.tracks || []) {
   }
 }
 
+// 歌单 trackIds：有序歌曲列表，引用与归属一致性检查
+for (const c of Array.isArray(library.collections) ? library.collections : []) {
+  if (c.trackIds !== undefined && !Array.isArray(c.trackIds)) {
+    errors.push(`${c.id}: trackIds 应为数组`);
+    continue;
+  }
+  if (!Array.isArray(c.trackIds)) continue;
+  const seen = new Set();
+  for (const rawTid of c.trackIds) {
+    const tid = String(rawTid);
+    if (!ID_RE.test(tid)) errors.push(`${c.id}: trackIds 含非法 id ${tid}`);
+    if (seen.has(tid)) errors.push(`${c.id}: trackIds 重复 ${tid}`);
+    seen.add(tid);
+    if (!ids.has(tid)) errors.push(`${c.id}: trackIds 引用不存在的歌曲 ${tid}`);
+  }
+  for (const t of library.tracks || []) {
+    if ((t.collectionIds || []).includes(c.id) && !c.trackIds.includes(t.id)) {
+      errors.push(`${t.id}: 歌曲属于歌单 ${c.id}，但未出现在该歌单的 trackIds 中`);
+    }
+  }
+}
+
 if (errors.length) {
   console.error(`✗ 发现 ${errors.length} 个问题：`);
   errors.forEach((e) => console.error(`  - ${e}`));

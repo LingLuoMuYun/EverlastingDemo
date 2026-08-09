@@ -12,7 +12,7 @@ const formatTime = (time: number) => {
 };
 
 export default function CloudPlayer() {
-  const { playlist, currentSong, isPlaying, progress, currentTime, duration, buffered, currentLyric, isLoading, togglePlay, nextSong, prevSong, handleSeek } = useMusic();
+  const { currentSong, isPlaying, progress, currentTime, duration, buffered, currentLyric, isLoading, totalTracks, togglePlay, nextSong, prevSong, handleSeek } = useMusic();
   const [displayedLyric, setDisplayedLyric] = useState("");
   // 🌟 初始化路由
   const router = useRouter();
@@ -44,14 +44,14 @@ export default function CloudPlayer() {
     );
   }
 
-  if (playlist.length === 0 || !currentSong) {
+  if (!currentSong) {
     return (
       <div className="h-full w-full rounded-3xl bg-white/40 dark:bg-slate-800/50 backdrop-blur-md border border-white/40 dark:border-white/10 shadow-xl p-6 flex flex-col items-center justify-center transition-all duration-700">
         <div className="w-16 h-16 mb-4 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center shadow-inner opacity-50">
           <svg className="w-8 h-8 text-slate-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
         </div>
-        <span className="text-slate-600 dark:text-slate-300 font-bold tracking-widest text-sm">正在为你寻找绝世好歌</span>
-        <span className="text-[10px] text-slate-400 mt-1">好歌正在路上，稍后刷新看看</span>
+        <span className="text-slate-600 dark:text-slate-300 font-bold tracking-widest text-sm">{totalTracks === 0 ? "正在为你寻找绝世好歌" : "选择一首歌开始播放"}</span>
+        <span className="text-[10px] text-slate-400 mt-1">{totalTracks === 0 ? "好歌正在路上，稍后刷新看看" : "去 /music 页选择歌单或歌曲"}</span>
       </div>
     );
   }

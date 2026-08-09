@@ -14,6 +14,8 @@ export interface MusicCollection {
   name: string;
   cover?: string;
   order: number;
+  /** 歌单内歌曲的有序 id 列表（缺省时由 collectionIds 派生，归一化后始终存在） */
+  trackIds?: string[];
 }
 
 export interface MusicTrack {
@@ -120,7 +122,7 @@ function normalizeLibrary(raw: MusicLibrary): MusicLibrary {
         ...t,
         tags: Array.isArray(t.tags) ? t.tags : [],
         collectionIds: Array.isArray(t.collectionIds)
-          ? t.collectionIds.filter((id) => validCollectionIds.has(id))
+          ? Array.from(new Set(t.collectionIds.filter((id) => validCollectionIds.has(id))))
           : [],
       };
       const errors = validateTrack(normalized);
@@ -132,7 +134,25 @@ function normalizeLibrary(raw: MusicLibrary): MusicLibrary {
     })
     .filter((t): t is MusicTrack => t !== null)
     .sort((a, b) => a.order - b.order);
-  return { version: 2, collections, tracks };
+
+  // 为每个歌单派生有序 trackIds：保留显式顺序，缺失的成员按曲库全局顺序补到末尾
+  const membersByCollection = new Map<string, string[]>();
+  for (const track of tracks) {
+    for (const cid of track.collectionIds || []) {
+      const list = membersByCollection.get(cid) || [];
+      list.push(track.id);
+      membersByCollection.set(cid, list);
+    }
+  }
+  const normalizedCollections = collections.map((c) => {
+    const members = membersByCollection.get(c.id) || [];
+    const explicit = Array.isArray(c.trackIds)
+      ? c.trackIds.filter((tid) => members.includes(tid))
+      : [];
+    const rest = members.filter((tid) => !explicit.includes(tid));
+    return { ...c, trackIds: [...explicit, ...rest] };
+  });
+  return { version: 2, collections: normalizedCollections, tracks };
 }
 
 /** 读取曲库（带 60s TTL 缓存；写入后 clearCache 立即生效） */
@@ -190,6 +210,12 @@ export function updateCollection(id: string, patch: Partial<Omit<MusicCollection
   const index = library.collections.findIndex((c) => c.id === id);
   if (index < 0) throw new Error(`歌单不存在: ${id}`);
   if (patch.name !== undefined && !patch.name.trim()) throw new Error("歌单名称不能为空");
+  if (
+    patch.trackIds !== undefined &&
+    (!Array.isArray(patch.trackIds) || patch.trackIds.some((tid) => typeof tid !== "string" || !tid))
+  ) {
+    throw new Error("trackIds 应为字符串数组");
+  }
   const collections = [...library.collections];
   collections[index] = { ...collections[index], ...patch, id, name: patch.name?.trim() || collections[index].name };
   saveLibrary({ ...library, collections });
