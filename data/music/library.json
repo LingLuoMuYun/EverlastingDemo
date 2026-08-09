@@ -1,6 +1,12 @@
 {
   "version": 2,
-  "collections": [],
+  "collections": [
+    {
+      "id": "col-20260810-col-msm4luq4",
+      "name": "演唱会",
+      "order": 1
+    }
+  ],
   "tracks": [
     {
       "id": "netease-1441758494",
