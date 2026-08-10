@@ -275,15 +275,15 @@ export default function PhotoAdminClient() {
       const okFiles = data.files || [];
       let added = 0;
       let lastPush: AutopushResult | undefined;
-      for (const f of okFiles) {
+      if (okFiles.length) {
         const r2 = await fetch("/api/photos/items", {
           method: "POST",
           headers: { "Content-Type": "application/json", ...authHeaders() },
-          body: JSON.stringify({ albumId: selectedAlbum.id, url: f.url }),
+          body: JSON.stringify({ albumId: selectedAlbum.id, urls: okFiles.map((f: { url: string }) => f.url) }),
         });
         const d2 = await r2.json();
-        if (!r2.ok) continue;
-        added++;
+        if (!r2.ok) throw new Error(d2.error || "添加照片失败");
+        added = okFiles.length;
         lastPush = d2.push;
       }
       setPushResult(lastPush ?? null);

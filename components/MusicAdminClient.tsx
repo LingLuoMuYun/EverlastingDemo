@@ -373,9 +373,35 @@ export default function MusicAdminClient() {
     const target = idx + dir;
     if (idx < 0 || target < 0 || target >= tracks.length) return;
     try {
-      const push = await putTrack(id, { order: target + 1 });
-      await putTrack(tracks[target].id, { order: idx + 1 });
-      setPushResult(push ?? null);
+      const res = await fetch("/api/music/library", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ swap: [id, tracks[target].id] }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "排序失败");
+      setPushResult(data.push);
+      refresh();
+    } catch (err) {
+      showToast(String((err as Error).message || err), "error");
+    }
+  };
+
+  /** 批量更新：一次请求落盘 + 一次 git 推送 */
+  const batchPut = async (patch: Record<string, unknown>, successMsg: string) => {
+    const ids = [...selected];
+    if (!ids.length) return;
+    try {
+      const res = await fetch("/api/music/library", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ ids, ...patch }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "批量操作失败");
+      setPushResult(data.push);
+      showToast(successMsg, "success");
+      setSelected(new Set());
       refresh();
     } catch (err) {
       showToast(String((err as Error).message || err), "error");
@@ -453,71 +479,28 @@ export default function MusicAdminClient() {
   };
 
   const batchAddToCollection = async (colId: string) => {
-    try {
-      let push: AutopushResult | undefined;
-      for (const id of selected) {
-        const t = tracks.find((x) => x.id === id);
-        if (!t) continue;
-        push = await putTrack(id, { collectionIds: [...new Set([...(t.collectionIds || []), colId])] });
-      }
-      setPushResult(push ?? null);
-      showToast("已加入歌单并推送", "success");
-      setSelected(new Set());
-      refresh();
-    } catch (err) {
-      showToast(String((err as Error).message || err), "error");
-    }
+    batchPut({ collectionOp: "add", collectionId: colId }, "已加入歌单并推送");
   };
 
   const batchRemoveFromCollection = async (colId: string) => {
-    try {
-      let push: AutopushResult | undefined;
-      for (const id of selected) {
-        const t = tracks.find((x) => x.id === id);
-        if (!t) continue;
-        push = await putTrack(id, { collectionIds: (t.collectionIds || []).filter((c) => c !== colId) });
-      }
-      setPushResult(push ?? null);
-      showToast("已移出歌单并推送", "success");
-      setSelected(new Set());
-      refresh();
-    } catch (err) {
-      showToast(String((err as Error).message || err), "error");
-    }
+    batchPut({ collectionOp: "remove", collectionId: colId }, "已移出歌单并推送");
   };
 
   const batchSetTags = async () => {
     const input = window.prompt("为所选歌曲设置标签（逗号分隔，留空清除）");
     if (input === null) return;
     const tags = parseTags(input);
-    try {
-      let push: AutopushResult | undefined;
-      for (const id of selected) {
-        push = await putTrack(id, { tags });
-      }
-      setPushResult(push ?? null);
-      showToast("已设置标签并推送", "success");
-      setSelected(new Set());
-      refresh();
-    } catch (err) {
-      showToast(String((err as Error).message || err), "error");
-    }
+    batchPut({ tags }, "已设置标签并推送");
   };
 
   const batchDelete = async () => {
     if (!window.confirm(`确定删除选中的 ${selected.size} 首歌曲吗？（git 历史可恢复）`)) return;
     try {
-      let push: AutopushResult | undefined;
-      for (const id of selected) {
-        const res = await fetch(`/api/music/library?id=${encodeURIComponent(id)}`, {
-          method: "DELETE",
-          headers: authHeaders(),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "删除失败");
-        push = data.push;
-      }
-      setPushResult(push ?? null);
+      const qs = [...selected].map((id) => `id=${encodeURIComponent(id)}`).join("&");
+      const res = await fetch(`/api/music/library?${qs}`, { method: "DELETE", headers: authHeaders() });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "删除失败");
+      setPushResult(data.push);
       showToast("已批量删除并推送", "success");
       setSelected(new Set());
       refresh();

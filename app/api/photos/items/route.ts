@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
-import { addPhoto, updatePhoto, movePhoto, reorderPhotos, removePhoto } from "../../../../lib/photos";
+import { addPhoto, addPhotos, updatePhoto, movePhoto, reorderPhotos, removePhoto } from "../../../../lib/photos";
 import { autopushPhotos } from "../../../../lib/autopush";
 
 const isProd = process.env.NODE_ENV === "production";
@@ -34,14 +34,25 @@ export async function POST(req: NextRequest) {
   if (isProd) return forbidWrites();
   if (!checkAuth(req)) return NextResponse.json({ error: "未授权（EDITOR_TOKEN 不匹配）" }, { status: 401 });
   const body = await req.json().catch(() => null);
-  if (!body?.albumId || !body?.url) return NextResponse.json({ error: "缺少 albumId 或 url" }, { status: 400 });
+  if (!body?.albumId || (!body?.url && !Array.isArray(body?.urls))) {
+    return NextResponse.json({ error: "缺少 albumId 或 url/urls" }, { status: 400 });
+  }
   try {
-    const photo = addPhoto(String(body.albumId), {
+    const albumId = String(body.albumId);
+    // 批量添加（多图上传）：一次写入 + 一次推送
+    if (Array.isArray(body.urls)) {
+      const urls = body.urls.map((u: unknown) => String(u)).filter(Boolean);
+      if (!urls.length) return NextResponse.json({ error: "urls 为空" }, { status: 400 });
+      const photos = addPhotos(albumId, urls);
+      const push = await autopushPhotos(`chore(photos): 新增 ${photos.length} 张照片`);
+      return NextResponse.json({ photos, push }, { status: 201 });
+    }
+    const photo = addPhoto(albumId, {
       url: String(body.url),
       caption: body.caption,
       takenAt: body.takenAt,
     });
-    const push = await autopushPhotos(`chore(photos): 新增照片`);
+    const push = await autopushPhotos("chore(photos): 新增照片");
     return NextResponse.json({ photo, push }, { status: 201 });
   } catch (err) {
     return NextResponse.json({ error: String((err as Error).message || err) }, { status: 400 });

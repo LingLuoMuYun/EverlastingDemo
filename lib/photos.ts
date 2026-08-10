@@ -210,6 +210,29 @@ export function addPhoto(
   return photo;
 }
 
+/** 批量添加照片（一次落盘，供多图上传使用，避免逐张触发 git 提交） */
+export function addPhotos(albumId: string, urls: string[]) {
+  const library = getPhotoLibrary();
+  const album = library.albums.find((a) => a.id === albumId);
+  if (!album) throw new Error(`相册不存在: ${albumId}`);
+  if (!Array.isArray(urls) || urls.length === 0) throw new Error("缺少要添加的照片 URL");
+  const maxOrder = album.photos.reduce((m, p) => Math.max(m, p.order), 0);
+  const photos = urls.map((url, i) => {
+    const photo: PhotoItem = {
+      id: generatePhotoId(),
+      url: String(url).trim(),
+      order: maxOrder + i + 1,
+    };
+    if (!photo.url) throw new Error("照片缺少 url");
+    return photo;
+  });
+  const albums = library.albums.map((a) =>
+    a.id === albumId ? { ...a, photos: [...a.photos, ...photos] } : a
+  );
+  savePhotoLibrary({ ...library, albums });
+  return photos;
+}
+
 export function updatePhoto(albumId: string, photoId: string, patch: Partial<Omit<PhotoItem, "id">>) {
   const library = getPhotoLibrary();
   const album = library.albums.find((a) => a.id === albumId);

@@ -248,6 +248,39 @@ export function updateTrack(id: string, patch: Partial<Omit<MusicTrack, "id">>) 
   return updated;
 }
 
+/** 批量更新曲目（只落盘一次，供批量操作使用，避免逐条触发 git 提交） */
+export function updateManyTracks(ids: string[], patch: Partial<Omit<MusicTrack, "id">>) {
+  const library = getLibrary();
+  const idSet = new Set(ids);
+  let changed = 0;
+  const tracks = library.tracks.map((track) => {
+    if (!idSet.has(track.id)) return track;
+    const updated: MusicTrack = { ...track, ...patch, id: track.id };
+    const errors = validateTrack(updated);
+    if (errors.length) throw new Error(`${track.id}: ${errors.join("; ")}`);
+    changed++;
+    return updated;
+  });
+  if (changed === 0) throw new Error("没有可更新的曲目（id 不存在）");
+  saveLibrary({ ...library, tracks });
+  return tracks.filter((t) => idSet.has(t.id));
+}
+
+/** 交换两首曲目的排序值（一次落盘，供上移/下移使用） */
+export function swapTracks(idA: string, idB: string) {
+  const library = getLibrary();
+  const a = library.tracks.find((t) => t.id === idA);
+  const b = library.tracks.find((t) => t.id === idB);
+  if (!a || !b) throw new Error(`曲目不存在：${!a ? idA : idB}`);
+  const tracks = library.tracks.map((t) => {
+    if (t.id === a.id) return { ...t, order: b.order };
+    if (t.id === b.id) return { ...t, order: a.order };
+    return t;
+  });
+  saveLibrary({ ...library, tracks });
+  return tracks.filter((t) => t.id === idA || t.id === idB);
+}
+
 /** 删除曲目 */
 export function removeTrack(id: string) {
   const library = getLibrary();
@@ -255,6 +288,16 @@ export function removeTrack(id: string) {
   if (tracks.length === library.tracks.length) throw new Error(`曲目不存在: ${id}`);
   saveLibrary({ ...library, tracks });
   return id;
+}
+
+/** 批量删除曲目（一次落盘，供批量删除使用） */
+export function removeManyTracks(ids: string[]) {
+  const library = getLibrary();
+  const idSet = new Set(ids);
+  const tracks = library.tracks.filter((t) => !idSet.has(t.id));
+  if (tracks.length === library.tracks.length) throw new Error("没有可删除的曲目（id 不存在）");
+  saveLibrary({ ...library, tracks });
+  return library.tracks.filter((t) => idSet.has(t.id));
 }
 
 /** 把库内 Track 合成播放器可直接使用的运行时 Track */
