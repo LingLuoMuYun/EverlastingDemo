@@ -7,6 +7,7 @@ import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import remarkRehype from "remark-rehype";
+import rehypeRaw from "rehype-raw";
 import rehypeHighlight from "rehype-highlight";
 import rehypeKatex from "rehype-katex";
 import rehypeStringify from "rehype-stringify";
@@ -17,6 +18,64 @@ const HIGHLIGHT_SUBSET = [
   "cpp", "c", "python", "java", "javascript", "typescript",
   "go", "rust", "bash", "json", "html", "css", "sql", "xml",
 ];
+
+/** 允许保留的标签（内容型），其余一律移除 */
+const ALLOWED_TAGS = new Set([
+  "p", "br", "hr", "a", "img", "span", "div",
+  "h1", "h2", "h3", "h4", "h5", "h6",
+  "ul", "ol", "li", "dl", "dt", "dd",
+  "table", "thead", "tbody", "tfoot", "tr", "th", "td", "caption", "colgroup", "col",
+  "blockquote", "pre", "code", "kbd", "samp", "var",
+  "strong", "b", "em", "i", "u", "s", "del", "ins", "sub", "sup", "mark", "small", "abbr", "cite", "q", "time",
+  "details", "summary", "figure", "figcaption", "audio", "video", "source", "track",
+]);
+
+/** 允许的 URL 协议（图片额外放行 data:image/） */
+const SAFE_PROTOCOLS = new Set(["http:", "https:", "mailto:", "tel:", "#", "/"]);
+const URL_ATTRIBUTES = new Set(["href", "src", "poster", "action", "formaction", "xlink:href"]);
+
+function isSafeUrl(value: string, tagName: string, attr: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (attr === "src" && tagName === "img" && trimmed.startsWith("data:image/")) return true;
+  if (trimmed.startsWith("#") || trimmed.startsWith("/")) return true;
+  try {
+    const proto = new URL(trimmed, "https://x").protocol;
+    return SAFE_PROTOCOLS.has(proto);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 输出前消毒：移除危险标签 / on* 事件属性 / javascript: 等危险 URL。
+ * 必须在 rehype-raw 之后执行（否则原始 HTML 仍是 raw 节点，无法逐元素处理）。
+ */
+function rehypeSanitizeHtml() {
+  return (tree: Root) => {
+    const walk = (parent: Root | Element) => {
+      parent.children = parent.children.filter((child) => {
+        if (child.type !== "element") return true;
+        const el = child as Element;
+        if (!ALLOWED_TAGS.has(el.tagName)) return false;
+        if (el.properties) {
+          for (const key of Object.keys(el.properties)) {
+            if (key.toLowerCase().startsWith("on")) delete el.properties[key];
+          }
+          for (const attr of URL_ATTRIBUTES) {
+            const value = el.properties[attr];
+            if (typeof value === "string" && !isSafeUrl(value, el.tagName, attr)) {
+              delete el.properties[attr];
+            }
+          }
+        }
+        walk(el);
+        return true;
+      });
+    };
+    walk(tree);
+  };
+}
 
 /**
  * 给渲染出的 <img> 统一加 referrerPolicy="no-referrer"，
@@ -96,10 +155,12 @@ export async function renderMarkdown(content: string): Promise<string> {
     .use(remarkGfm)
     .use(remarkMath)
     .use(remarkRehype, { allowDangerousHtml: true })
+    .use(rehypeRaw)
     .use(rehypeHighlight, { detect: true, ignoreMissing: true, subset: HIGHLIGHT_SUBSET })
     .use(rehypeKatex)
+    .use(rehypeSanitizeHtml)
     .use(rehypeNoReferrerImages)
-    .use(rehypeStringify, { allowDangerousHtml: true })
+    .use(rehypeStringify)
     .process(preprocessContent(content));
   return processed.toString();
 }

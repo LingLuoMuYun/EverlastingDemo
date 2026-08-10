@@ -31,8 +31,10 @@ function now() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export async function GET() {
-  return NextResponse.json(getAllNotesMeta({ includeDraft: true }));
+export async function GET(req: NextRequest) {
+  // 生产环境永远不公开草稿；本地开发仅在携带鉴权（或未配置 EDITOR_TOKEN）时返回草稿
+  const includeDraft = !isProd && checkAuth(req);
+  return NextResponse.json(getAllNotesMeta({ includeDraft }));
 }
 
 export async function POST(req: NextRequest) {
