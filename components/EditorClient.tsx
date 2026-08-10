@@ -466,6 +466,12 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush, embedded }: { note
     showToast("已插入到光标处", "success");
   };
 
+  /** 把图片栏里的图片设为封面图 */
+  const setAsCover = (url: string) => {
+    setCover(url);
+    showToast("已设为封面图", "success");
+  };
+
   const backLink = (
     <Link href="/admin/notes" className="text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
       ← 返回列表
@@ -571,6 +577,23 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush, embedded }: { note
           <div className="mt-4">
             <label className={labelCls}>封面图 URL</label>
             <input value={cover} onChange={(e) => setCover(e.target.value)} placeholder="https://..." className={inputCls} />
+            {cover ? (
+              <div className="relative mt-2">
+                <img
+                  src={cover}
+                  alt="封面图预览"
+                  referrerPolicy="no-referrer"
+                  className="w-full h-28 object-cover rounded-xl border border-white/30 dark:border-white/10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setCover("")}
+                  className="absolute top-1.5 right-1.5 px-2 py-1 rounded-lg bg-black/60 text-white text-[10px] font-black hover:bg-black/80 transition-colors"
+                >
+                  清除
+                </button>
+              </div>
+            ) : null}
           </div>
           <div className="mt-4">
             <label className={labelCls}>摘要（留空取正文前 100 字）</label>
@@ -651,9 +674,18 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush, embedded }: { note
                 key={url}
                 onClick={() => insertImage(url)}
                 title="点击插入正文"
-                className="group relative w-24 h-24 rounded-xl overflow-hidden border border-white/30 dark:border-white/10 shadow-md bg-slate-200 dark:bg-slate-700 cursor-pointer"
+                className={`group relative w-24 h-24 rounded-xl overflow-hidden border shadow-md bg-slate-200 dark:bg-slate-700 cursor-pointer transition-all ${
+                  cover === url
+                    ? "ring-2 ring-indigo-500 border-indigo-400 dark:border-indigo-400"
+                    : "border-white/30 dark:border-white/10"
+                }`}
               >
                 <img src={url} alt="图片" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                {cover === url && (
+                  <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded-md bg-indigo-500 text-white text-[9px] font-black">
+                    封面
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={(e) => {
@@ -665,8 +697,29 @@ function EditorForm({ note, initialMtime, allSlugs, autoPush, embedded }: { note
                 >
                   ×
                 </button>
-                <span className="absolute bottom-0 inset-x-0 text-[9px] text-center bg-black/50 text-white py-0.5 opacity-0 group-hover:opacity-100 transition-opacity truncate px-1">
-                  点击插入
+                <span className="absolute bottom-0 inset-x-0 flex gap-1 p-1 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      insertImage(url);
+                    }}
+                    className="flex-1 rounded bg-white/20 text-white text-[9px] font-black py-0.5 hover:bg-white/40 transition-colors"
+                    title="插入正文"
+                  >
+                    插入
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAsCover(url);
+                    }}
+                    className="flex-1 rounded bg-indigo-500/90 text-white text-[9px] font-black py-0.5 hover:bg-indigo-400 transition-colors"
+                    title="设为封面图"
+                  >
+                    封面
+                  </button>
                 </span>
               </div>
             ))}
