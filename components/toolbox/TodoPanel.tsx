@@ -12,6 +12,9 @@ import {
   Check,
   GripVertical,
   Tags,
+  ArrowUp,
+  ArrowDown,
+  Keyboard,
 } from "lucide-react";
 import { useToast } from "../ToastProvider";
 import type { TodoItem, TodoPriority } from "./types";
@@ -22,6 +25,7 @@ import {
   type UseTodosReturn,
 } from "./useTodos";
 import { dateKeyOffset, todayKey } from "./storage";
+import { useKeyboardShortcuts } from "./useKeyboardShortcuts";
 
 const PRIORITY_META: Record<
   TodoPriority,
@@ -291,6 +295,7 @@ export default function TodoPanel({
   const [renamingTag, setRenamingTag] = useState<string | null>(null);
   const [tagDraft, setTagDraft] = useState("");
   const [newTagName, setNewTagName] = useState("");
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const addInputRef = useRef<HTMLInputElement>(null);
   const editTitleRef = useRef<HTMLInputElement>(null);
 
@@ -305,7 +310,11 @@ export default function TodoPanel({
   }, [editingId]);
 
   const handleAdd = () => {
-    if (!newTitle.trim()) return;
+    if (!newTitle.trim()) {
+      showToast("请先输入任务内容", "warning");
+      addInputRef.current?.focus();
+      return;
+    }
     api.add(newTitle, {
       priority: newPriority,
       dueDate: newDueDate,
@@ -399,6 +408,25 @@ export default function TodoPanel({
     if (api.tagFilter === tag) api.setTagFilter(null);
   };
 
+  const resetFilters = () => {
+    api.setKeyword("");
+    api.setTagFilter(null);
+    api.setFilter("all");
+  };
+
+  const handleEscape = () => {
+    cancelEdit();
+    setShortcutsOpen(false);
+    setTagManagerOpen(false);
+  };
+
+  useKeyboardShortcuts({
+    onFocusAdd: () => addInputRef.current?.focus(),
+    onFilter: (key) => api.setFilter(key),
+    onEscape: handleEscape,
+    onToggleHelp: () => setShortcutsOpen((o) => !o),
+  });
+
   const dueTodayCount = api.todos.filter(
     (t) => !t.completed && t.dueDate === today
   ).length;
@@ -412,6 +440,9 @@ export default function TodoPanel({
         ? "bg-indigo-500 text-white border-indigo-500"
         : "bg-white/40 dark:bg-slate-900/40 border-white/50 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-indigo-500/10"
     }`;
+
+  const KBD =
+    "px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 font-mono font-bold";
 
   return (
     <section className="rounded-3xl backdrop-blur-md border shadow-xl p-6 bg-white/40 dark:bg-slate-800/40 border-white/60 dark:border-slate-600/50 flex flex-col">
@@ -543,6 +574,15 @@ export default function TodoPanel({
           <Pencil className="w-3 h-3" />
           管理
         </button>
+        <button
+          type="button"
+          onClick={() => setShortcutsOpen((o) => !o)}
+          aria-expanded={shortcutsOpen}
+          className="px-2.5 py-1 rounded-full text-xs font-bold border border-white/50 dark:border-white/10 bg-white/40 dark:bg-slate-900/40 text-slate-500 dark:text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10 transition-all flex items-center gap-1"
+        >
+          <Keyboard className="w-3 h-3" />
+          快捷键
+        </button>
       </div>
 
       {tagManagerOpen && (
@@ -643,6 +683,28 @@ export default function TodoPanel({
         </div>
       )}
 
+      {shortcutsOpen && (
+        <div className="mb-3 rounded-2xl border border-white/60 dark:border-white/10 bg-white/40 dark:bg-slate-900/40 p-3 space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+          <p className="font-black text-slate-700 dark:text-slate-200 mb-1">
+            键盘快捷键
+          </p>
+          <p>
+            <kbd className={KBD}>N</kbd> 聚焦新增输入框
+          </p>
+          <p>
+            <kbd className={KBD}>1</kbd>
+            <kbd className={`${KBD} ml-1`}>2</kbd>
+            <kbd className={`${KBD} ml-1`}>3</kbd> 切换 全部/进行中/已完成
+          </p>
+          <p>
+            <kbd className={KBD}>Esc</kbd> 取消编辑或关闭面板
+          </p>
+          <p>
+            <kbd className={KBD}>?</kbd> 显示/隐藏本帮助
+          </p>
+        </div>
+      )}
+
       {api.sort === "manual" && (
         <p className="mb-3 text-xs font-bold text-indigo-500 dark:text-indigo-400 flex items-center gap-1.5">
           <GripVertical className="w-3.5 h-3.5" />
@@ -683,7 +745,22 @@ export default function TodoPanel({
       <ul className="flex-1 space-y-2 overflow-y-auto max-h-[560px] pr-1 list-none">
         {api.visible.length === 0 && (
           <li className="py-12 text-center text-sm text-slate-400 dark:text-slate-500 font-medium">
-            {api.counts.total === 0 ? "暂无任务，先添加一条吧" : "没有匹配的任务"}
+            {api.counts.total === 0 ? (
+              "暂无任务，先添加一条吧"
+            ) : (
+              <div>
+                <p>没有匹配的任务</p>
+                {(api.keyword || api.tagFilter || api.filter !== "all") && (
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    className="mt-3 px-4 py-2 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 text-xs font-bold hover:bg-indigo-500/25 transition-colors"
+                  >
+                    清除筛选
+                  </button>
+                )}
+              </div>
+            )}
           </li>
         )}
 
@@ -885,13 +962,31 @@ export default function TodoPanel({
                   </div>
                   <div className="flex gap-1 shrink-0">
                     {api.sort === "manual" && (
-                      <span
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-300 dark:text-slate-600 cursor-grab"
-                        title="拖拽排序"
-                        aria-hidden
-                      >
-                        <GripVertical className="w-4 h-4" />
-                      </span>
+                      <>
+                        <span
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-300 dark:text-slate-600 cursor-grab"
+                          title="拖拽排序"
+                          aria-hidden
+                        >
+                          <GripVertical className="w-4 h-4" />
+                        </span>
+                        <button
+                          onClick={() => api.moveUp(t.id)}
+                          aria-label="上移任务"
+                          title="上移"
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10 transition-colors"
+                        >
+                          <ArrowUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => api.moveDown(t.id)}
+                          aria-label="下移任务"
+                          title="下移"
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10 transition-colors"
+                        >
+                          <ArrowDown className="w-3.5 h-3.5" />
+                        </button>
+                      </>
                     )}
                     <button
                       onClick={() => startEdit(t)}

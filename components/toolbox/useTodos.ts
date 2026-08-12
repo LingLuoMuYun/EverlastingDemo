@@ -36,6 +36,9 @@ export interface UseTodosReturn {
   setSort: (s: TodoSort) => void;
   /** 手动排序：把 draggedId 移动到 targetId 之前 */
   moveBefore: (draggedId: string, targetId: string) => void;
+  /** 手动排序:上移/下移(触屏与键盘可用) */
+  moveUp: (id: string) => void;
+  moveDown: (id: string) => void;
   visible: TodoItem[];
   counts: { total: number; active: number; completed: number };
 }
@@ -162,6 +165,32 @@ export function useTodos(
     [commit]
   );
 
+  const moveUp = useCallback(
+    (id: string) => {
+      commit((prev) => {
+        const i = prev.findIndex((t) => t.id === id);
+        if (i <= 0) return prev;
+        const next = [...prev];
+        [next[i - 1], next[i]] = [next[i], next[i - 1]];
+        return next;
+      });
+    },
+    [commit]
+  );
+
+  const moveDown = useCallback(
+    (id: string) => {
+      commit((prev) => {
+        const i = prev.findIndex((t) => t.id === id);
+        if (i < 0 || i >= prev.length - 1) return prev;
+        const next = [...prev];
+        [next[i + 1], next[i]] = [next[i], next[i + 1]];
+        return next;
+      });
+    },
+    [commit]
+  );
+
   const visible = useMemo(() => {
     let list = todos;
     if (filter === "active") list = list.filter((t) => !t.completed);
@@ -222,6 +251,8 @@ export function useTodos(
     sort,
     setSort,
     moveBefore,
+    moveUp,
+    moveDown,
     visible,
     counts,
   };
