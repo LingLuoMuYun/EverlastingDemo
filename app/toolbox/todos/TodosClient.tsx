@@ -1,7 +1,11 @@
 "use client";
 
+import { useCallback } from "react";
 import { useToolboxData } from "../../../components/toolbox/useToolboxData";
-import { useTodos } from "../../../components/toolbox/useTodos";
+import {
+  useTodos,
+  type TodosUpdater,
+} from "../../../components/toolbox/useTodos";
 import TodoPanel from "../../../components/toolbox/TodoPanel";
 import BackLink from "../../../components/toolbox/BackLink";
 import type { ToolboxData } from "../../../components/toolbox/types";
@@ -27,9 +31,12 @@ function TodosWorkspace({
   data: ToolboxData;
   updateData: (updater: (d: ToolboxData) => ToolboxData) => void;
 }) {
-  const todosApi = useTodos(data.todos, (next) =>
-    updateData((d) => ({ ...d, todos: next }))
+  const handleTodosChange = useCallback(
+    (updater: TodosUpdater) =>
+      updateData((d) => ({ ...d, todos: updater(d.todos) })),
+    [updateData]
   );
+  const todosApi = useTodos(data.todos, handleTodosChange);
 
   return (
     <div className="w-full max-w-5xl mx-auto mt-28 px-4 sm:px-10 relative z-10">

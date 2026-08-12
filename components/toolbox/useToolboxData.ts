@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   loadToolboxData,
+  migrate,
   normalizeDay,
   saveToolboxData,
+  STORAGE_KEY,
 } from "./storage";
 import type { ToolboxData } from "./types";
 
@@ -16,6 +18,21 @@ export function useToolboxData() {
     const loaded = normalizeDay(loadToolboxData());
     saveToolboxData(loaded);
     setData(loaded);
+  }, []);
+
+  // 跨标签页同步:其他标签页写入时,本页实时刷新(单一数据源,防双开不同步)
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key !== STORAGE_KEY || !e.newValue) return;
+      try {
+        const next = normalizeDay(migrate(JSON.parse(e.newValue)));
+        setData(next);
+      } catch {
+        // 其他标签页写入坏数据时忽略,不影响当前页
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
   const updateData = useCallback(

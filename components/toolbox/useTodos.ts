@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { TodoItem, TodoPriority } from "./types";
 import { uid } from "./storage";
 
@@ -10,6 +10,9 @@ export const PRIORITY_ORDER: Record<TodoPriority, number> = {
   medium: 1,
   low: 2,
 };
+
+/** 所有变更都以函数式更新回到上层单一数据源,避免闭包读到过期列表 */
+export type TodosUpdater = (prev: TodoItem[]) => TodoItem[];
 
 export interface UseTodosReturn {
   todos: TodoItem[];
@@ -30,27 +33,22 @@ export interface UseTodosReturn {
   counts: { total: number; active: number; completed: number };
 }
 
+/**
+ * 受控的 Todo 状态 hook:不持有任务列表副本,
+ * 数据由父级(useToolboxData)统一持有,变更通过 onTodosChange 函数式回写。
+ */
 export function useTodos(
-  initial: TodoItem[],
-  onTodosChange?: (todos: TodoItem[]) => void
+  todos: TodoItem[],
+  onTodosChange: (updater: TodosUpdater) => void
 ): UseTodosReturn {
-  const [todos, setTodos] = useState<TodoItem[]>(initial);
   const [filter, setFilter] = useState<TodoFilter>("all");
   const [keyword, setKeyword] = useState("");
   const [sort, setSort] = useState<TodoSort>("created");
-  const persistRef = useRef(onTodosChange);
 
-  useEffect(() => {
-    persistRef.current = onTodosChange;
-  });
-
-  const commit = useCallback((updater: (prev: TodoItem[]) => TodoItem[]) => {
-    setTodos((prev) => {
-      const next = updater(prev);
-      persistRef.current?.(next);
-      return next;
-    });
-  }, []);
+  const commit = useCallback(
+    (updater: TodosUpdater) => onTodosChange(updater),
+    [onTodosChange]
+  );
 
   const add = useCallback(
     (title: string, extra?: Partial<TodoItem>) => {
