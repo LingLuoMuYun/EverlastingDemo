@@ -28,6 +28,8 @@ export interface UseTodosReturn {
   undoRemove: (items: TodoItem[]) => void;
   filter: TodoFilter;
   setFilter: (f: TodoFilter) => void;
+  tagFilter: string | null;
+  setTagFilter: (tag: string | null) => void;
   keyword: string;
   setKeyword: (k: string) => void;
   sort: TodoSort;
@@ -47,6 +49,7 @@ export function useTodos(
   onTodosChange: (updater: TodosUpdater) => void
 ): UseTodosReturn {
   const [filter, setFilter] = useState<TodoFilter>("all");
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [keyword, setKeyword] = useState("");
   const [sort, setSort] = useState<TodoSort>("created");
   // 内存回收站:只做过期清理记账,撤销本身由调用方携带的任务快照完成
@@ -163,11 +166,14 @@ export function useTodos(
     let list = todos;
     if (filter === "active") list = list.filter((t) => !t.completed);
     if (filter === "completed") list = list.filter((t) => t.completed);
+    if (tagFilter) list = list.filter((t) => t.tag?.trim() === tagFilter);
     if (keyword.trim()) {
       const kw = keyword.trim().toLowerCase();
       list = list.filter(
         (t) =>
-          t.title.toLowerCase().includes(kw) || (t.note ?? "").toLowerCase().includes(kw)
+          t.title.toLowerCase().includes(kw) ||
+          (t.note ?? "").toLowerCase().includes(kw) ||
+          (t.tag ?? "").toLowerCase().includes(kw)
       );
     }
     if (sort === "manual") return list; // 手动排序：保持数组顺序
@@ -188,7 +194,7 @@ export function useTodos(
       sorted.sort((a, b) => b.createdAt - a.createdAt);
     }
     return sorted;
-  }, [todos, filter, keyword, sort]);
+  }, [todos, filter, tagFilter, keyword, sort]);
 
   const counts = useMemo(
     () => ({
@@ -209,6 +215,8 @@ export function useTodos(
     undoRemove,
     filter,
     setFilter,
+    tagFilter,
+    setTagFilter,
     keyword,
     setKeyword,
     sort,

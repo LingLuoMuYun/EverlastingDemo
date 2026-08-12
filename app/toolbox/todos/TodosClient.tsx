@@ -38,6 +38,45 @@ function TodosWorkspace({
   );
   const todosApi = useTodos(data.todos, handleTodosChange);
 
+  const handleAddTag = useCallback(
+    (name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      updateData((d) =>
+        d.tags.includes(trimmed) ? d : { ...d, tags: [...d.tags, trimmed] }
+      );
+    },
+    [updateData]
+  );
+
+  const handleRenameTag = useCallback(
+    (oldName: string, newName: string) => {
+      const next = newName.trim();
+      if (!next || next === oldName) return;
+      updateData((d) => ({
+        ...d,
+        tags: d.tags.map((x) => (x === oldName ? next : x)),
+        todos: d.todos.map((t) =>
+          t.tag === oldName ? { ...t, tag: next } : t
+        ),
+      }));
+    },
+    [updateData]
+  );
+
+  const handleDeleteTag = useCallback(
+    (name: string) => {
+      updateData((d) => ({
+        ...d,
+        tags: d.tags.filter((x) => x !== name),
+        todos: d.todos.map((t) =>
+          t.tag === name ? { ...t, tag: undefined } : t
+        ),
+      }));
+    },
+    [updateData]
+  );
+
   return (
     <div className="w-full max-w-5xl mx-auto mt-28 px-4 sm:px-10 relative z-10">
       <BackLink />
@@ -50,7 +89,13 @@ function TodosWorkspace({
         </p>
       </div>
       <div className="pb-10">
-        <TodoPanel api={todosApi} />
+        <TodoPanel
+          api={todosApi}
+          tags={data.tags}
+          onAddTag={handleAddTag}
+          onRenameTag={handleRenameTag}
+          onDeleteTag={handleDeleteTag}
+        />
       </div>
     </div>
   );
