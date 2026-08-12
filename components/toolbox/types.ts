@@ -11,6 +11,10 @@ export interface TodoItem {
   completed: boolean;
   createdAt: number;
   completedAt?: number;
+  pomodoroCount?: number; // v2: 累计关联番茄数
+  lastFocusAt?: number; // v2: 最近一次被番茄钟关联的时间戳
+  archived?: boolean; // v2: 归档标记
+  deletedAt?: number; // v2: 软删除时间戳(配合撤销/回收站,当前为预留字段)
 }
 
 export interface PomodoroSettings {
@@ -40,8 +44,9 @@ export interface DailyStats {
 }
 
 export interface ToolboxData {
-  version: 1;
+  version: 2;
   todos: TodoItem[];
+  tags: string[]; // v2: 全局标签库
   pomodoro: {
     settings: PomodoroSettings;
     state: PomodoroState;
