@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TodoItem, TodoPriority } from "./types";
 import { uid } from "./storage";
 
@@ -11,6 +11,9 @@ export const PRIORITY_ORDER: Record<TodoPriority, number> = {
   low: 2,
 };
 
+/** 删除/清空后的撤销窗口(毫秒),与回收站过期时间一致 */
+export const RECYCLE_TTL = 5000;
+
 /** 所有变更都以函数式更新回到上层单一数据源,避免闭包读到过期列表 */
 export type TodosUpdater = (prev: TodoItem[]) => TodoItem[];
 
@@ -21,6 +24,8 @@ export interface UseTodosReturn {
   update: (id: string, patch: Partial<TodoItem>) => void;
   remove: (id: string) => void;
   clearCompleted: () => void;
+  /** 撤销最近一次删除/清空:把给定任务重新插回列表顶部 */
+  undoRemove: (items: TodoItem[]) => void;
   filter: TodoFilter;
   setFilter: (f: TodoFilter) => void;
   keyword: string;
@@ -44,6 +49,26 @@ export function useTodos(
   const [filter, setFilter] = useState<TodoFilter>("all");
   const [keyword, setKeyword] = useState("");
   const [sort, setSort] = useState<TodoSort>("created");
+  // 内存回收站:只做过期清理记账,撤销本身由调用方携带的任务快照完成
+  const recycleBinRef = useRef<{ items: TodoItem[]; expireAt: number }[]>([]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const now = Date.now();
+      recycleBinRef.current = recycleBinRef.current.filter(
+        (e) => e.expireAt > now
+      );
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const stageRemoval = useCallback((items: TodoItem[]) => {
+    if (!items.length) return;
+    recycleBinRef.current = [
+      ...recycleBinRef.current,
+      { items, expireAt: Date.now() + RECYCLE_TTL },
+    ];
+  }, []);
 
   const commit = useCallback(
     (updater: TodosUpdater) => onTodosChange(updater),
@@ -93,14 +118,30 @@ export function useTodos(
 
   const remove = useCallback(
     (id: string) => {
+      const item = todos.find((t) => t.id === id);
+      if (item) stageRemoval([item]);
       commit((prev) => prev.filter((t) => t.id !== id));
     },
-    [commit]
+    [todos, commit, stageRemoval]
   );
 
   const clearCompleted = useCallback(() => {
+    const completed = todos.filter((t) => t.completed);
+    if (completed.length) stageRemoval(completed);
     commit((prev) => prev.filter((t) => !t.completed));
-  }, [commit]);
+  }, [todos, commit, stageRemoval]);
+
+  const undoRemove = useCallback(
+    (items: TodoItem[]) => {
+      if (!items.length) return;
+      const ids = new Set(items.map((i) => i.id));
+      recycleBinRef.current = recycleBinRef.current.filter(
+        (e) => !e.items.some((x) => ids.has(x.id))
+      );
+      commit((prev) => [...items, ...prev]);
+    },
+    [commit]
+  );
 
   const moveBefore = useCallback(
     (draggedId: string, targetId: string) => {
@@ -165,6 +206,7 @@ export function useTodos(
     update,
     remove,
     clearCompleted,
+    undoRemove,
     filter,
     setFilter,
     keyword,

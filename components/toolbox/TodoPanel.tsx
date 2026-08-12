@@ -12,8 +12,14 @@ import {
   Check,
   GripVertical,
 } from "lucide-react";
+import { useToast } from "../ToastProvider";
 import type { TodoItem, TodoPriority } from "./types";
-import type { TodoFilter, TodoSort, UseTodosReturn } from "./useTodos";
+import {
+  RECYCLE_TTL,
+  type TodoFilter,
+  type TodoSort,
+  type UseTodosReturn,
+} from "./useTodos";
 import { todayKey } from "./storage";
 
 const PRIORITY_META: Record<
@@ -54,6 +60,7 @@ const SORT_OPTIONS: { key: TodoSort; label: string }[] = [
 ];
 
 export default function TodoPanel({ api }: { api: UseTodosReturn }) {
+  const { showToast } = useToast();
   const [newTitle, setNewTitle] = useState("");
   const [newPriority, setNewPriority] = useState<TodoPriority>("medium");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -66,6 +73,38 @@ export default function TodoPanel({ api }: { api: UseTodosReturn }) {
   const handleAdd = () => {
     api.add(newTitle, { priority: newPriority });
     setNewTitle("");
+  };
+
+  const handleRemove = (t: TodoItem) => {
+    if (editingId === t.id) {
+      setEditingId(null);
+      setDraft(null);
+    }
+    api.remove(t.id);
+    showToast(
+      `已删除「${t.title}」`,
+      "info",
+      {
+        label: "撤销",
+        onClick: () => api.undoRemove([t]),
+      },
+      RECYCLE_TTL
+    );
+  };
+
+  const handleClearCompleted = () => {
+    const completed = api.todos.filter((x) => x.completed);
+    if (!completed.length) return;
+    api.clearCompleted();
+    showToast(
+      `已清空 ${completed.length} 项已完成任务`,
+      "info",
+      {
+        label: "撤销",
+        onClick: () => api.undoRemove(completed),
+      },
+      RECYCLE_TTL
+    );
   };
 
   const startEdit = (t: TodoItem) => {
@@ -189,7 +228,7 @@ export default function TodoPanel({ api }: { api: UseTodosReturn }) {
             </span>
             {api.counts.completed > 0 && (
               <button
-                onClick={api.clearCompleted}
+                onClick={handleClearCompleted}
                 className="text-red-500 hover:text-red-600 dark:text-red-400 transition-colors"
               >
                 清空已完成
@@ -415,7 +454,7 @@ export default function TodoPanel({ api }: { api: UseTodosReturn }) {
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      onClick={() => api.remove(t.id)}
+                      onClick={() => handleRemove(t)}
                       className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
                       title="删除"
                     >
