@@ -17,6 +17,20 @@
       "draft": false,
       "createdAt": "2026-08-05T17:03:13.669Z",
       "updatedAt": "2026-08-05T17:03:13.669Z"
+    },
+    {
+      "id": "project-20260816-project-guide-skill",
+      "name": "Project-guide-skill",
+      "description": "让 AI 快速搞懂代码项目：只读盘点仓库结构、追踪核心流程、梳理埋点事件，输出 Markdown 报告、交互式 HTML 指南，或针对指定模块的聚焦分析。",
+      "icon": "🧠",
+      "githubUrl": "https://github.com/LingLuoMuYun/Project-guide-skill",
+      "tags": [
+        "Skill"
+      ],
+      "order": 2,
+      "draft": false,
+      "createdAt": "2026-08-16T07:57:59.050Z",
+      "updatedAt": "2026-08-16T07:57:59.050Z"
     }
   ]
 }
